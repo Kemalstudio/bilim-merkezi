@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  STUDENT
+  MODERATOR
+  ADMIN
+}
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  phone         String?   @unique
+  role          Role      @default(STUDENT)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts         Account[]
+  sessions         Session[]
+  enrollments      Enrollment[]
+  payments         Payment[]
+  reviews          Review[]
+  auditLogs        AuditLog[]
+  promoRedemptions PromoRedemption[]
+  children         Child[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+model Category {
+  id      String   @id @default(cuid())
+  name    String
+  slug    String   @unique
+  icon    String?
+  courses Course[]
+
+  @@map("categories")
+}
+
+model Course {
+  id               String      @id @default(cuid())
+  title            String
+  slug             String      @unique
+  summary          String
+  description      String      @db.Text
+  level            CourseLevel @default(BEGINNER)
+  durationHours    Int
+  startDate        DateTime?
+  price            Decimal     @db.Decimal(10, 2)
+  discountPrice    Decimal?    @db.Decimal(10, 2)
+  coverImage       String?
+  instructorName   String
+  instructorTitle  String?
+  instructorBio    String?     @db.Text
+  instructorAvatar String?
+  published        Boolean     @default(true)
+  featured         Boolean     @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  modules          CourseModule[]
+  enrollments      Enrollment[]
+  reviews          Review[]
+  payments         Payment[]
+  examResults      ExamResult[]
+  libraryResources LibraryResource[]
+  scheduleEvents   ScheduleEvent[]
+
+  @@map("courses")
+}
+
+model CourseModule {
+  id       String @id @default(cuid())
+  title    String
+  position Int
+
+  courseId String
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons  Lesson[]
+
+  @@map("course_modules")
+}
+
+model Lesson {
+  id          String @id @default(cuid())
+  title       String
+  durationMin Int
+  position    Int
+
+  moduleId String
+  module   CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  @@map("lessons")
+}
+
+model Enrollment {
+  id        String           @id @default(cuid())
+  status    EnrollmentStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  userId   String
+  user     User    @relation(fields: [userId], references: [id])
+  courseId String
+  course   Course  @relation(fields: [courseId], references: [id])
+  childId  String?
+  child    Child?  @relation(fields: [childId], references: [id], onDelete: SetNull)
+
+  payment     Payment?
+  application EnrollmentApplication?
+
+  @@unique([userId, courseId, childId])
+  @@index([childId])
+  @@map("enrollments")
+}
+
+model EnrollmentApplication {
+  id             String   @id @default(cuid())
+  lastName       String
+  firstName      String
+  patronymic     String?
+  birthDate      DateTime
+  documentNumber String
+  documentFile   String
+  createdAt      DateTime @default(now())
+
+  enrollmentId String     @unique
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  @@map("enrollment_applications")
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("usd")
+  status                PaymentStatus @default(PENDING)
+  stripeCheckoutId      String?       @unique
+  stripePaymentIntentId String?       @unique
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  enrollmentId String     @unique
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  courseId     String
+  course       Course     @relation(fields: [courseId], references: [id])
+
+  promoRedemption PromoRedemption?
+
+  @@map("payments")
+}
+
+model PromoCode {
+  id            String       @id @default(cuid())
+  code          String       @unique
+  discountType  DiscountType
+  discountValue Decimal      @db.Decimal(10, 2)
+  maxUses       Int?
+  usedCount     Int          @default(0)
+  expiresAt     DateTime?
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+
+  redemptions PromoRedemption[]
+
+  @@map("promo_codes")
+}
+
+model PromoRedemption {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  paymentId   String?   @unique
+  payment     Payment?  @relation(fields: [paymentId], references: [id])
+
+  @@map("promo_redemptions")
+}
+
+model LibraryResource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  fileUrl     String
+  fileType    String
+  fileSizeKb  Int?
+  published   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+
+  @@map("library_resources")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  userId   String
+  user     User   @relation(fields: [userId], references: [id])
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+
+  @@unique([userId, courseId])
+  @@map("reviews")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actorId String
+  actor   User   @relation(fields: [actorId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model ExamResult {
+  id          String   @id @default(cuid())
+  phone       String
+  studentName String
+  examName    String
+  score       Int
+  maxScore    Int
+  examDate    DateTime
+  createdAt   DateTime @default(now())
+
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+  childId  String?
+  child    Child?  @relation(fields: [childId], references: [id], onDelete: SetNull)
+
+  @@index([phone])
+  @@index([childId])
+  @@map("exam_results")
+}
+
+/// A child registered by a parent account. The parent is the only owner: every
+/// read of a child's data is scoped by parentId, so one parent can never reach
+/// another parent's child.
+model Child {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  birthDate DateTime
+  grade     Int?
+  avatarHue Int      @default(0)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  parentId String
+  parent   User   @relation(fields: [parentId], references: [id], onDelete: Cascade)
+
+  enrollments Enrollment[]
+  examResults ExamResult[]
+
+  @@index([parentId])
+  @@map("children")
+}
+
+/// One-time codes for phone sign-in. The code itself is never stored — only a
+/// bcrypt hash — so a database read cannot be replayed as a login.
+model PhoneOtp {
+  id         String     @id @default(cuid())
+  phone      String
+  codeHash   String
+  purpose    OtpPurpose @default(LOGIN)
+  expiresAt  DateTime
+  attempts   Int        @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime   @default(now())
+
+  @@index([phone, purpose])
+  @@map("phone_otps")
+}
+
+enum OtpPurpose {
+  LOGIN
+  RECOVERY
+}
+
+/// Upcoming lessons and events shown on a parent's dashboard.
+model ScheduleEvent {
+  id        String    @id @default(cuid())
+  title     String
+  startsAt  DateTime
+  endsAt    DateTime?
+  location  String?
+  createdAt DateTime  @default(now())
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([courseId, startsAt])
+  @@map("schedule_events")
+}
