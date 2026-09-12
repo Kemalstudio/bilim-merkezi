@@ -17,7 +17,8 @@ const inter = Inter({
   weight: ["400", "500", "600", "700"],
 });
 
-const THEME_INIT_SCRIPT = `(function(){try{if(localStorage.getItem("theme")==="dark"){document.documentElement.classList.add("dark");}}catch(e){}})();`;
+// The "js" class also gates the first-load curtain, so it never sticks without scripts.
+const THEME_INIT_SCRIPT = `(function(){document.documentElement.classList.add("js");try{if(localStorage.getItem("theme")==="dark"){document.documentElement.classList.add("dark");}}catch(e){}})();`;
 
 export const metadata: Metadata = {
   title: {
