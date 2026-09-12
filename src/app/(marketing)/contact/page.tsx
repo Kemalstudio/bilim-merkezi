@@ -19,7 +19,7 @@ export default function ContactPage() {
   return (
     <div className="pb-24">
       <section className="px-3 sm:px-5">
-        <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-[#10241f] px-5 py-20 text-white sm:rounded-[2.4rem] sm:px-10 lg:py-28">
+        <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-panel px-5 py-20 text-white sm:rounded-[2.4rem] sm:px-10 lg:py-28">
           <div aria-hidden className="science-grid pointer-events-none absolute inset-0 opacity-40" />
           <Constellation
             variant="watermark"
@@ -46,7 +46,7 @@ export default function ContactPage() {
             <AnimeReveal key={label} delay={index * 0.07} className="bg-surface">
               <div className="group min-h-64 bg-surface p-7 transition-colors hover:bg-accent">
                 <div className="flex items-start justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-sunken text-brand-ink group-hover:bg-[#14201d] group-hover:text-white">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-sunken text-brand-ink group-hover:bg-[#0b2233] group-hover:text-white">
                     <Icon className="h-5 w-5" strokeWidth={1.8} />
                   </span>
                   <span className="font-display text-xs font-bold text-muted">0{index + 1}</span>
