@@ -36,14 +36,14 @@ export default async function LibraryPage() {
   return (
     <div>
       <section className="px-3 sm:px-5">
-        <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-accent px-5 py-20 text-[#14201d] sm:rounded-[2.4rem] sm:px-10 lg:py-24">
+        <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-accent px-5 py-20 text-[#0b2233] sm:rounded-[2.4rem] sm:px-10 lg:py-24">
           <AnimeReveal className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.75fr_1.25fr]">
-            <span className="eyebrow !text-[#14201d]">Библиотека Bilim</span>
+            <span className="eyebrow !text-[#0b2233]">Библиотека Bilim</span>
             <div>
             <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.98] tracking-[-0.06em] sm:text-7xl">
               Материалы, которые помогают закрепить результат
             </h1>
-            <p className="mt-7 max-w-2xl text-lg leading-8 text-[#40503f]">
+            <p className="mt-7 max-w-2xl text-lg leading-8 text-[#41607a]">
               Конспекты, памятки и тренировочные работы к программам — всё нужное собрано в одном месте.
             </p>
             </div>
@@ -65,7 +65,7 @@ export default async function LibraryPage() {
                     download
                     className="group flex min-h-44 items-start gap-4 rounded-[1.4rem] border border-border bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-glow-md"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-[#14201d]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-[#0b2233]">
                       <Icon className="h-5 w-5" strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex-1">
