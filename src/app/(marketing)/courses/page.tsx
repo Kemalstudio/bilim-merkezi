@@ -5,7 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { toCourseCardData } from "@/lib/course-mappers";
 import { CourseCard } from "@/components/courses/course-card";
 import { CourseFilters } from "@/components/courses/course-filters";
+import { CourseGridReveal } from "@/components/courses/course-grid-reveal";
 import { EmptyState } from "@/components/shared/empty-state";
+import { ScrollFadeAway } from "@/components/shared/scroll-fade-away";
 
 export const metadata: Metadata = {
   title: "Каталог курсов",
@@ -39,13 +41,13 @@ export default async function CoursesPage({
   return (
     <div className="pb-24">
       <section className="px-3 sm:px-5">
-        <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-[#10241f] px-5 py-16 text-white sm:rounded-[2.4rem] sm:px-10 lg:py-24">
+        <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-panel px-5 py-16 text-white sm:rounded-[2.4rem] sm:px-10 lg:py-24">
           <div aria-hidden className="science-grid pointer-events-none absolute inset-0 opacity-40" />
-          <div className="relative mx-auto max-w-7xl">
+          <ScrollFadeAway className="relative mx-auto max-w-7xl">
             <p className="eyebrow !text-accent">Программы Bilim</p>
             <h1 className="mt-6 max-w-4xl font-display text-5xl font-bold leading-[0.98] tracking-[-0.06em] sm:text-7xl">Найдите курс под цель, а не просто предмет</h1>
             <p className="mt-6 max-w-xl text-base leading-7 text-white/55">Подготовка к экзаменам, развитие базы и уверенный следующий уровень — с понятной программой и контролем прогресса.</p>
-          </div>
+          </ScrollFadeAway>
         </div>
       </section>
 
@@ -55,11 +57,15 @@ export default async function CoursesPage({
       </div>
 
       {courses.length > 0 ? (
-        <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <CourseGridReveal
+          // Remounts when the filters change, so a new set of cards plays in too.
+          key={`${params.q ?? ""}|${params.category ?? ""}|${params.level ?? ""}`}
+          className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {courses.map((course) => (
             <CourseCard key={course.slug} course={toCourseCardData(course)} />
           ))}
-        </div>
+        </CourseGridReveal>
       ) : (
         <div className="mt-8">
           <EmptyState
