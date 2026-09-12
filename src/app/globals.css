@@ -5,31 +5,36 @@
 :root {
   color-scheme: light;
 
-  /* Bilim 2026 — warm paper, botanical ink, high-signal accents. */
-  --color-ink: #14201d;
-  --color-ink-soft: #3f4e49;
-  --color-muted: #71807a;
-  --color-border: #d9ded5;
-  --color-surface: #fffefa;
-  --color-surface-sunken: #e9ede5;
-  --color-background: #f4f3ec;
+  /* Ocean: deep water and turquoise, with sand as the warm accent. The page stays a light,
+     cool tone and cards stay white, so the separation works as before. */
+  --color-ink: #0b2233;
+  --color-ink-soft: #2f4d63;
+  --color-muted: #6a8299;
+  --color-border: #cfdde9;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #e2ebf2;
+  --color-background: #eef3f7;
 
-  --color-brand-start: #163f34;
-  --color-brand-mid: #0f5b45;
-  --color-brand-end: #1a7658;
-  --color-brand: #0f5b45;
-  --color-brand-ink: #0d4b3a;
+  /* Deep-water panels that sit directly on the page: hero, dark cards, footer, tapes. */
+  --color-panel: #062434;
 
-  --color-accent: #dff56a;
-  --color-accent-soft: #efffa2;
-  --color-accent-deep: #748718;
+  --color-brand-start: #073b52;
+  --color-brand-mid: #0b6a8f;
+  --color-brand-end: #12a3b8;
+  --color-brand: #0b6a8f;
+  --color-brand-ink: #064a67;
+
+  /* Sand and sun: the bright accent that carries dark text. */
+  --color-accent: #f4a83a;
+  --color-accent-soft: #ffd08a;
+  --color-accent-deep: #b8701a;
 
   /* Semantic */
-  --color-amber: #d4842d;
-  --color-emerald: #148b62;
-  --color-rose: #e55f4e;
+  --color-amber: #e08a1e;
+  --color-emerald: #0e9e8a;
+  --color-rose: #e2604f;
 
-  --shadow-color: 157 25% 15%;
+  --shadow-color: 205 40% 18%;
   --shadow-glow-sm: 0 3px 12px -5px hsl(var(--shadow-color) / 0.16);
   --shadow-glow-md: 0 18px 44px -18px hsl(var(--shadow-color) / 0.24);
   --shadow-glow-lg: 0 36px 90px -30px hsl(var(--shadow-color) / 0.32);
@@ -41,29 +46,33 @@
 .dark {
   color-scheme: dark;
 
-  --color-ink: #f0f4ed;
-  --color-ink-soft: #c4cec8;
-  --color-muted: #8e9c96;
-  --color-border: #293d36;
-  --color-surface: #15241f;
-  --color-surface-sunken: #0f1c18;
-  --color-background: #0b1512;
+  /* Deep sea at night. The same lightness steps as before, so cards stay visible. */
+  --color-ink: #eaf4fa;
+  --color-ink-soft: #b9d2e2;
+  --color-muted: #7e9db2;
+  --color-border: #1d4257;
+  --color-surface: #0a2233;
+  --color-surface-sunken: #071a27;
+  --color-background: #04131d;
 
-  --color-brand-start: #5bbd8d;
-  --color-brand-mid: #38a878;
-  --color-brand-end: #91d859;
-  --color-brand: #49b483;
-  --color-brand-ink: #8bdbaf;
+  /* Lifted clear of the page, or these panels vanish into it. */
+  --color-panel: #0d3448;
 
-  --color-accent: #dff56a;
-  --color-accent-soft: #efffa2;
-  --color-accent-deep: #c5dd51;
+  --color-brand-start: #3fb6d6;
+  --color-brand-mid: #56c8dd;
+  --color-brand-end: #7fdfd6;
+  --color-brand: #4fc2d8;
+  --color-brand-ink: #8fdcee;
 
-  --color-amber: #f3b667;
-  --color-emerald: #4fd39c;
+  --color-accent: #f4a83a;
+  --color-accent-soft: #ffd08a;
+  --color-accent-deep: #c98a2c;
+
+  --color-amber: #f0b968;
+  --color-emerald: #4fd3bd;
   --color-rose: #ff8a78;
 
-  --shadow-color: 157 65% 4%;
+  --shadow-color: 205 60% 3%;
   --shadow-glow-sm: 0 2px 12px -2px hsl(var(--shadow-color) / 0.5);
   --shadow-glow-md: 0 16px 40px -10px hsl(var(--shadow-color) / 0.6);
   --shadow-glow-lg: 0 28px 70px -14px hsl(var(--shadow-color) / 0.7);
@@ -77,6 +86,7 @@
   --color-surface: var(--color-surface);
   --color-surface-sunken: var(--color-surface-sunken);
   --color-background: var(--color-background);
+  --color-panel: var(--color-panel);
 
   --color-brand-start: var(--color-brand-start);
   --color-brand-mid: var(--color-brand-mid);
@@ -112,7 +122,9 @@ body {
   background: var(--color-background);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  overflow-x: hidden;
+  /* clip, not hidden: hidden would make body a (non-scrolling) scroll container, which
+     silently breaks every position: sticky inside it — the header and the card stack. */
+  overflow-x: clip;
   line-height: 1.55;
   transition: background-color 200ms ease, color 200ms ease;
 }
@@ -123,7 +135,7 @@ h1, h2, h3, h4, .font-display {
 
 ::selection {
   background: var(--color-accent);
-  color: #14201d;
+  color: #0b2233;
 }
 
 /* Signature brand sweep: navy deepening into warm gold. Used deliberately for
@@ -131,9 +143,9 @@ h1, h2, h3, h4, .font-display {
 .brand-gradient {
   background-image: linear-gradient(
     135deg,
-    #163f34 0%,
-    #0f5b45 68%,
-    #72861a 100%
+    #073b52 0%,
+    #0b6a8f 68%,
+    #12a3b8 100%
   );
 }
 
@@ -220,19 +232,19 @@ h1, h2, h3, h4, .font-display {
 .aurora-veil {
   --aurora-bands: repeating-linear-gradient(
     -100deg,
-    #10241f 0%,
-    #1d5f49 14%,
-    #dff56a 26%,
-    #e55f4e 34%,
-    #10241f 48%
+    #062434 0%,
+    #0b6a8f 14%,
+    #3fd0c9 26%,
+    #f4a83a 34%,
+    #062434 48%
   );
   --aurora-fade: repeating-linear-gradient(
     -100deg,
-    #10241f 0%,
-    #10241f 7%,
+    #062434 0%,
+    #062434 7%,
     transparent 10%,
     transparent 12%,
-    #10241f 16%
+    #062434 16%
   );
   position: absolute;
   inset: -10%;
@@ -295,6 +307,39 @@ h1, h2, h3, h4, .font-display {
   font-weight: 700;
   letter-spacing: -0.055em;
   line-height: 0.99;
+}
+
+/* SplitText line masks (SplitHeading): headroom for descenders and diacritics (у, Й, Ý)
+   that the tight heading leading would otherwise clip. */
+.split-line-mask {
+  padding-block: 0.12em;
+  margin-block: -0.12em;
+}
+
+/* First-load curtain: hidden unless the page confirmed scripts are running (the .js class is
+   set by the inline script in the root layout), so it can never stick without JavaScript. */
+#site-intro {
+  display: none;
+}
+
+.js #site-intro {
+  display: flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .js #site-intro {
+    display: none;
+  }
+}
+
+/* Twinkling stars in the summit scene (stilled by the reduced-motion rule below). */
+.summit-star {
+  animation: summit-twinkle 3.6s ease-in-out infinite;
+}
+
+@keyframes summit-twinkle {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 0.25; }
 }
 
 .paper-noise::after {
