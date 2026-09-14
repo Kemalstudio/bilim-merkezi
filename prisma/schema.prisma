@@ -383,3 +383,15 @@ model ScheduleEvent {
   @@index([courseId, startsAt])
   @@map("schedule_events")
 }
+
+/// Editable site configuration managed from /bilim/admin: text edits per language, home
+/// page section order, animation switches, contacts, languages and the hero report card.
+/// One row per key; each value's shape is validated in src/lib/site-settings-schema.ts.
+model SiteSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+
+  @@map("site_settings")
+}
