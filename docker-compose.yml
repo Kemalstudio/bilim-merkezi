@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bilim-merkezi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bilim
+      POSTGRES_PASSWORD: bilim_dev_password
+      POSTGRES_DB: bilim_merkezi
+    ports:
+      - "5434:5432"
+    volumes:
+      - bilim_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bilim -d bilim_merkezi"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bilim_pgdata:
