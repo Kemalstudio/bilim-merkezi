@@ -445,6 +445,10 @@ async function main() {
   const courseRecords = [];
   for (const c of courses) {
     const category = categoryBySlug.get(c.categorySlug)!;
+    // The week-by-week programme from course-programs.ts; the short module list is only a fallback.
+    const weeks =
+      coursePrograms[c.slug] ??
+      c.modules.map((mod) => ({ title: mod.title, goal: "", lessons: mod.lessons.map((lesson) => ({ ...lesson, topics: [] as string[] })) }));
     const course = await prisma.course.create({
       data: {
         title: c.title,
@@ -452,7 +456,8 @@ async function main() {
         summary: c.summary,
         description: c.description,
         level: c.level,
-        durationHours: c.durationHours,
+        ...PROGRAM_FORMAT,
+        durationHours: coursePrograms[c.slug] ? programDurationHours(weeks.length) : c.durationHours,
         price: c.price,
         discountPrice: c.discountPrice,
         instructorName: c.instructorName,
@@ -462,13 +467,15 @@ async function main() {
         published: true,
         categoryId: category.id,
         modules: {
-          create: c.modules.map((mod, index) => ({
-            title: mod.title,
+          create: weeks.map((week, index) => ({
+            title: week.title,
+            goal: week.goal || null,
             position: index,
             lessons: {
-              create: mod.lessons.map((lesson, lessonIndex) => ({
+              create: week.lessons.map((lesson, lessonIndex) => ({
                 title: lesson.title,
                 durationMin: lesson.durationMin,
+                topics: lesson.topics,
                 position: lessonIndex,
               })),
             },
