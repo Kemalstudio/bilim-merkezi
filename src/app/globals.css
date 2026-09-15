@@ -361,3 +361,12 @@ h1, h2, h3, h4, .font-display {
     scroll-behavior: auto !important;
   }
 }
+
+/* The hero report card and its chips wait hidden for their GSAP entrance, so the final frame
+   never flashes first. autoAlpha writes visibility inline and takes over (hero-visual-reveal). */
+@media (prefers-reduced-motion: no-preference) and (min-width: 1024px) {
+  .js [data-hv-card],
+  .js [data-hv-chip] {
+    visibility: hidden;
+  }
+}
