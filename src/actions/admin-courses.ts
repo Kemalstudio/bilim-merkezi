@@ -4,9 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/rbac";
-import { courseSchema } from "@/lib/validations/course";
+import { courseSchema, type CourseInput } from "@/lib/validations/course";
 import { logAction } from "@/lib/audit";
 import { slugify } from "@/lib/utils";
+import { estimateDurationHours } from "@/lib/course-schedule";
 
 export type CourseActionState = { error?: string } | undefined;
 
@@ -16,7 +17,9 @@ function parseCourseForm(formData: FormData) {
     summary: formData.get("summary"),
     description: formData.get("description"),
     level: formData.get("level"),
-    durationHours: formData.get("durationHours"),
+    lessonsPerWeek: formData.get("lessonsPerWeek"),
+    weeklyHoursMin: formData.get("weeklyHoursMin"),
+    weeklyHoursMax: formData.get("weeklyHoursMax"),
     startDate: formData.get("startDate") || undefined,
     price: formData.get("price"),
     discountPrice: formData.get("discountPrice") || undefined,
@@ -30,6 +33,49 @@ function parseCourseForm(formData: FormData) {
     modules: JSON.parse((formData.get("modulesJson") as string) || "[]"),
   };
   return courseSchema.safeParse(raw);
+}
+
+/** Course fields shared by create and update; the total duration follows from the weeks. */
+function courseFields(data: CourseInput) {
+  return {
+    title: data.title,
+    summary: data.summary,
+    description: data.description,
+    level: data.level,
+    lessonsPerWeek: data.lessonsPerWeek,
+    weeklyHoursMin: data.weeklyHoursMin,
+    weeklyHoursMax: data.weeklyHoursMax,
+    durationHours: estimateDurationHours(data.modules.length, data),
+    startDate: data.startDate ?? null,
+    price: data.price,
+    discountPrice: data.discountPrice ?? null,
+    categoryId: data.categoryId,
+    instructorName: data.instructorName,
+    instructorTitle: data.instructorTitle,
+    instructorBio: data.instructorBio,
+    coverImage: data.coverImage,
+    published: data.published,
+    featured: data.featured,
+  };
+}
+
+/** Weeks (modules) with their lessons and topics, in form order. */
+function weeksCreate(data: CourseInput) {
+  return {
+    create: data.modules.map((week, index) => ({
+      title: week.title,
+      goal: week.goal || null,
+      position: index,
+      lessons: {
+        create: week.lessons.map((lesson, lessonIndex) => ({
+          title: lesson.title,
+          durationMin: lesson.durationMin,
+          topics: lesson.topics,
+          position: lessonIndex,
+        })),
+      },
+    })),
+  };
 }
 
 export async function createCourseAction(
@@ -50,37 +96,7 @@ export async function createCourseAction(
   }
 
   const course = await prisma.course.create({
-    data: {
-      title: parsed.data.title,
-      slug,
-      summary: parsed.data.summary,
-      description: parsed.data.description,
-      level: parsed.data.level,
-      durationHours: parsed.data.durationHours,
-      startDate: parsed.data.startDate ?? null,
-      price: parsed.data.price,
-      discountPrice: parsed.data.discountPrice ?? null,
-      categoryId: parsed.data.categoryId,
-      instructorName: parsed.data.instructorName,
-      instructorTitle: parsed.data.instructorTitle,
-      instructorBio: parsed.data.instructorBio,
-      coverImage: parsed.data.coverImage,
-      published: parsed.data.published,
-      featured: parsed.data.featured,
-      modules: {
-        create: parsed.data.modules.map((mod, index) => ({
-          title: mod.title,
-          position: index,
-          lessons: {
-            create: mod.lessons.map((lesson, lessonIndex) => ({
-              title: lesson.title,
-              durationMin: lesson.durationMin,
-              position: lessonIndex,
-            })),
-          },
-        })),
-      },
-    },
+    data: { ...courseFields(parsed.data), slug, modules: weeksCreate(parsed.data) },
   });
 
   await logAction(admin.id, "course.created", "course", course.id, { title: course.title });
@@ -106,36 +122,7 @@ export async function updateCourseAction(
 
     await tx.course.update({
       where: { id: courseId },
-      data: {
-        title: parsed.data.title,
-        summary: parsed.data.summary,
-        description: parsed.data.description,
-        level: parsed.data.level,
-        durationHours: parsed.data.durationHours,
-        startDate: parsed.data.startDate ?? null,
-        price: parsed.data.price,
-        discountPrice: parsed.data.discountPrice ?? null,
-        categoryId: parsed.data.categoryId,
-        instructorName: parsed.data.instructorName,
-        instructorTitle: parsed.data.instructorTitle,
-        instructorBio: parsed.data.instructorBio,
-        coverImage: parsed.data.coverImage,
-        published: parsed.data.published,
-        featured: parsed.data.featured,
-        modules: {
-          create: parsed.data.modules.map((mod, index) => ({
-            title: mod.title,
-            position: index,
-            lessons: {
-              create: mod.lessons.map((lesson, lessonIndex) => ({
-                title: lesson.title,
-                durationMin: lesson.durationMin,
-                position: lessonIndex,
-              })),
-            },
-          })),
-        },
-      },
+      data: { ...courseFields(parsed.data), modules: weeksCreate(parsed.data) },
     });
   });
 
