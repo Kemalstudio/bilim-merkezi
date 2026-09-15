@@ -25,5 +25,5 @@ export async function refundEnrollmentAction(enrollmentId: string) {
   ]);
 
   await logAction(admin.id, "payment.refunded", "enrollment", enrollmentId);
-  revalidatePath("/admin/enrollments");
+  revalidatePath("/bilim/admin/enrollments");
 }
