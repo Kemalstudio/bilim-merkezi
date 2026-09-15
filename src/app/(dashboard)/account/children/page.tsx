@@ -27,7 +27,8 @@ export default async function ChildrenPage() {
 
       {children.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-10 text-center">
-          <LottieIcon src="/lottie/kids-empty.json" className="h-24 w-24" />
+          {/* The face is drawn in navy, so it sits on a light disc in dark mode. */}
+          <LottieIcon src="/lottie/kids-empty.json" className="h-24 w-24 rounded-full dark:bg-[#dbe6ee] dark:p-2" />
           <div>
             <p className="font-display text-lg font-semibold text-ink">Пока ни одного профиля</p>
             <p className="mt-1 max-w-md text-sm text-muted">
