@@ -117,6 +117,11 @@ model Course {
   description      String      @db.Text
   level            CourseLevel @default(BEGINNER)
   durationHours    Int
+  // Weekly format: every week of the programme has this many lessons, and the whole week
+  // (lessons plus practice and homework) takes weeklyHoursMin–weeklyHoursMax hours.
+  lessonsPerWeek   Int         @default(3)
+  weeklyHoursMin   Int         @default(15)
+  weeklyHoursMax   Int         @default(20)
   startDate        DateTime?
   price            Decimal     @db.Decimal(10, 2)
   discountPrice    Decimal?    @db.Decimal(10, 2)
@@ -148,6 +153,8 @@ model CourseModule {
   id       String @id @default(cuid())
   title    String
   position Int
+  // A module is one week of the programme; the goal is what the student can do by its end.
+  goal     String?
 
   courseId String
   course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -161,6 +168,8 @@ model Lesson {
   title       String
   durationMin Int
   position    Int
+  // What the lesson covers, in order.
+  topics      String[] @default([])
 
   moduleId String
   module   CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
