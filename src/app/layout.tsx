@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Manrope, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import { getLocale } from "@/lib/i18n/get-locale";
+import { getAnimations } from "@/lib/site-settings";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -30,11 +31,13 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
-  const locale = await getLocale();
+  const [locale, animations] = await Promise.all([getLocale(), getAnimations()]);
 
   return (
     <html
       lang={locale}
+      // Read by the scroll reveal components; switched in /bilim/admin/site/animations.
+      data-reveals={animations.scrollReveals ? undefined : "off"}
       suppressHydrationWarning
       className={`${manrope.variable} ${inter.variable} h-full antialiased`}
     >
