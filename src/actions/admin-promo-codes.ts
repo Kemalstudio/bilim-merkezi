@@ -46,7 +46,7 @@ export async function createPromoCodeAction(
   });
 
   await logAction(admin.id, "promoCode.created", "promoCode", promo.id, { code: promo.code });
-  revalidatePath("/admin/promo-codes");
+  revalidatePath("/bilim/admin/promo-codes");
   return { success: true };
 }
 
@@ -54,7 +54,7 @@ export async function togglePromoCodeActiveAction(id: string, active: boolean) {
   const admin = await requireRole("ADMIN", "MODERATOR");
   await prisma.promoCode.update({ where: { id }, data: { active } });
   await logAction(admin.id, active ? "promoCode.activated" : "promoCode.deactivated", "promoCode", id);
-  revalidatePath("/admin/promo-codes");
+  revalidatePath("/bilim/admin/promo-codes");
 }
 
 export async function deletePromoCodeAction(id: string): Promise<PromoCodeActionState> {
@@ -67,5 +67,5 @@ export async function deletePromoCodeAction(id: string): Promise<PromoCodeAction
 
   await prisma.promoCode.delete({ where: { id } });
   await logAction(admin.id, "promoCode.deleted", "promoCode", id);
-  revalidatePath("/admin/promo-codes");
+  revalidatePath("/bilim/admin/promo-codes");
 }
