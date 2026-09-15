@@ -1,6 +1,10 @@
+import { Fragment, type ReactNode } from "react";
 import { getLocale } from "@/lib/i18n/get-locale";
 import { getDictionary } from "@/lib/i18n/dictionaries";
+import { getAnimations, getSections } from "@/lib/site-settings";
+import type { HomeSectionId } from "@/lib/site-settings-schema";
 import { Hero } from "@/components/marketing/hero";
+import { HeroStage } from "@/components/marketing/hero-stage";
 import { StoryProgress } from "@/components/marketing/story-progress";
 import { TrustStatsSection } from "@/components/marketing/trust-stats-section";
 import { JourneySection } from "@/components/marketing/journey-section";
@@ -20,46 +24,73 @@ import { FaqSection } from "@/components/marketing/faq-section";
 import { CtaSection } from "@/components/marketing/cta-section";
 
 /**
- * The page is ordered as a parent's decision: trust → method → proof →
- * suitable programme → people → social proof → enrolment.
+ * By default the page is ordered as a parent's decision: trust → method → proof → suitable
+ * programme → people → social proof → enrolment. Order and visibility are managed in
+ * /bilim/admin/site/sections; hero and stats always open the page, as one pinned scene.
  */
 export default async function HomePage() {
-  const locale = await getLocale();
+  const [locale, sections, animations] = await Promise.all([getLocale(), getSections(), getAnimations()]);
   const dict = await getDictionary(locale);
 
-  const storyStages = [
-    { id: "why-us", label: dict.story.whyUs },
-    { id: "how-it-works", label: dict.story.howItWorks },
-    { id: "results", label: dict.story.results },
-    { id: "testimonials", label: dict.story.testimonials },
-    { id: "enroll", label: dict.story.enroll },
-  ];
+  const shown = new Set(sections.filter((section) => section.visible).map((section) => section.id));
+  const order = sections.map((section) => section.id);
 
-  return (
-    <>
-      <StoryProgress stages={storyStages} navLabel={dict.story.label} />
-      <Hero />
-      <TrustStatsSection labels={dict.stats} />
-      <JourneySection labels={dict.journey} />
-      <LearningExperienceSection labels={dict.learningExperience} />
-      <HowItWorksSection labels={dict.howItWorks} />
-      <ResultsSection labels={dict.results} />
-      <DashboardShowcaseSection labels={dict.dashboard} subjects={dict.gridZoom.subjects} />
-      <GridZoomSection labels={dict.gridZoom} />
-      <LearningDirectionsSection labels={dict.directions} />
-      <LessonShowcaseSection labels={dict.lesson} />
-      <PopularCoursesSection labels={dict.popularCourses} />
-      <InstructorsSection labels={dict.instructors} />
-      <SummitSection labels={dict.summit} />
-      <TestimonialsSection labels={dict.testimonials} />
+  const blocks: Partial<Record<HomeSectionId, ReactNode>> = {
+    journey: <JourneySection labels={dict.journey} />,
+    learningExperience: <LearningExperienceSection labels={dict.learningExperience} />,
+    howItWorks: <HowItWorksSection labels={dict.howItWorks} />,
+    results: <ResultsSection labels={dict.results} />,
+    dashboard: <DashboardShowcaseSection labels={dict.dashboard} subjects={dict.gridZoom.subjects} />,
+    gridZoom: <GridZoomSection labels={dict.gridZoom} />,
+    directions: <LearningDirectionsSection labels={dict.directions} />,
+    lesson: <LessonShowcaseSection labels={dict.lesson} />,
+    popularCourses: <PopularCoursesSection labels={dict.popularCourses} />,
+    instructors: <InstructorsSection labels={dict.instructors} />,
+    summit: <SummitSection labels={dict.summit} />,
+    testimonials: <TestimonialsSection labels={dict.testimonials} />,
+    marquee: (
       <VelocityMarquee
         rows={[
           { words: Object.values(dict.gridZoom.subjects), tone: "ink", direction: 1 },
           { words: dict.marquee.words, tone: "accent", direction: -1 },
         ]}
       />
-      <FaqSection labels={dict.faq} />
-      <CtaSection labels={dict.finalCta} />
+    ),
+    faq: <FaqSection labels={dict.faq} />,
+    cta: <CtaSection labels={dict.finalCta} />,
+  };
+
+  const storyStages = (
+    [
+      { id: "why-us", label: dict.story.whyUs, section: "learningExperience" },
+      { id: "how-it-works", label: dict.story.howItWorks, section: "howItWorks" },
+      { id: "results", label: dict.story.results, section: "results" },
+      { id: "testimonials", label: dict.story.testimonials, section: "testimonials" },
+      { id: "enroll", label: dict.story.enroll, section: "cta" },
+    ] satisfies { id: string; label: string; section: HomeSectionId }[]
+  )
+    .filter((stage) => shown.has(stage.section))
+    .sort((a, b) => order.indexOf(a.section) - order.indexOf(b.section))
+    .map(({ id, label }) => ({ id, label }));
+
+  const heroScene = animations.heroScene && shown.has("hero");
+
+  return (
+    <>
+      {storyStages.length > 0 && <StoryProgress stages={storyStages} navLabel={dict.story.label} />}
+
+      {(shown.has("hero") || shown.has("stats")) && (
+        <HeroStage enabled={heroScene}>
+          {shown.has("hero") && <Hero pinned={heroScene} allow3d={animations.hero3d} />}
+          {/* The stats bar tucks under the hero; without one it needs room of its own. */}
+          {!shown.has("hero") && shown.has("stats") && <div aria-hidden className="h-28" />}
+          {shown.has("stats") && <TrustStatsSection labels={dict.stats} />}
+        </HeroStage>
+      )}
+
+      {sections.map((section) =>
+        section.visible && blocks[section.id] ? <Fragment key={section.id}>{blocks[section.id]}</Fragment> : null
+      )}
     </>
   );
 }
