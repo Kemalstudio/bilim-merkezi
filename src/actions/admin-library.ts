@@ -43,7 +43,7 @@ export async function createLibraryResourceAction(
   });
 
   await logAction(admin.id, "libraryResource.created", "libraryResource", resource.id, { title: resource.title });
-  revalidatePath("/admin/library");
+  revalidatePath("/bilim/admin/library");
   revalidatePath("/library");
   return { success: true };
 }
@@ -57,7 +57,7 @@ export async function toggleLibraryResourcePublishedAction(id: string, published
     "libraryResource",
     id
   );
-  revalidatePath("/admin/library");
+  revalidatePath("/bilim/admin/library");
   revalidatePath("/library");
 }
 
@@ -65,6 +65,6 @@ export async function deleteLibraryResourceAction(id: string) {
   const admin = await requireRole("ADMIN", "MODERATOR");
   await prisma.libraryResource.delete({ where: { id } });
   await logAction(admin.id, "libraryResource.deleted", "libraryResource", id);
-  revalidatePath("/admin/library");
+  revalidatePath("/bilim/admin/library");
   revalidatePath("/library");
 }
