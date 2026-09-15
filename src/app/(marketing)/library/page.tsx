@@ -70,8 +70,8 @@ export default async function LibraryPage() {
                     download
                     className="group flex min-h-44 items-start gap-4 rounded-[1.4rem] border border-border bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-glow-md"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-[#0b2233]">
-                      <Icon className="h-5 w-5" strokeWidth={1.75} />
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-[#0b2233] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
+                      <Icon className="h-5 w-5 group-hover:animate-icon-wiggle" strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-display text-lg font-bold tracking-[-0.03em] text-ink transition-colors group-hover:text-brand-ink">
