@@ -55,7 +55,7 @@ export default async function LibraryPage() {
         {resources.length === 0 ? (
           <EmptyState
             icon={FileText}
-            animation="/lottie/empty.lottie"
+            animation="/lottie/empty.json"
             title="Пока нет материалов"
             description="Скоро здесь появятся учебные пособия."
           />
