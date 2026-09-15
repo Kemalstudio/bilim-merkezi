@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Users } from "lucide-react";
 import { requireUser } from "@/lib/rbac";
 import { getChildrenForParent } from "@/lib/children-data";
 import { ChildCard } from "@/components/account/child-card";
 import { ChildFormDialog } from "@/components/account/child-form-dialog";
+import { LottieIcon } from "@/components/shared/lottie-icon";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Мои дети" };
@@ -27,9 +27,7 @@ export default async function ChildrenPage() {
 
       {children.length === 0 ? (
         <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border p-10 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-sunken">
-            <Users aria-hidden className="h-6 w-6 text-brand-ink" />
-          </span>
+          <LottieIcon src="/lottie/kids-empty.json" className="h-24 w-24" />
           <div>
             <p className="font-display text-lg font-semibold text-ink">Пока ни одного профиля</p>
             <p className="mt-1 max-w-md text-sm text-muted">
