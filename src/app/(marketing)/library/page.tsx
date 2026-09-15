@@ -53,7 +53,12 @@ export default async function LibraryPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
         {resources.length === 0 ? (
-          <EmptyState icon={FileText} title="Пока нет материалов" description="Скоро здесь появятся учебные пособия." />
+          <EmptyState
+            icon={FileText}
+            animation="/lottie/empty.lottie"
+            title="Пока нет материалов"
+            description="Скоро здесь появятся учебные пособия."
+          />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
             {resources.map((resource, i) => {
