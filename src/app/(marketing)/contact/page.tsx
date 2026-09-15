@@ -54,7 +54,7 @@ export default async function ContactPage() {
             <AnimeReveal key={label} delay={index * 0.07} className="bg-surface">
               <div className="group min-h-64 bg-surface p-7 transition-colors hover:bg-accent">
                 <div className="flex items-start justify-between">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken p-1.5 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken p-1.5 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110 dark:bg-[#dbe6ee]">
                     <LottieIcon src={animation} trigger="hover" className="h-full w-full" />
                   </span>
                   <span className="font-display text-xs font-bold text-muted transition-transform duration-300 group-hover:-translate-y-0.5">
