@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { ChartNoAxesCombined, HeartHandshake, ScanSearch, Users } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { AnimeReveal } from "@/components/shared/anime-reveal";
+import { LottieIcon } from "@/components/shared/lottie-icon";
 import { SplitHeading } from "@/components/shared/split-heading";
 
 export const metadata: Metadata = {
@@ -9,24 +9,25 @@ export const metadata: Metadata = {
   description: "Bilim Merkezi — образовательный центр с прозрачной системой подготовки к экзаменам.",
 };
 
+// Each icon plays when its card is hovered (see public/lottie/CREDITS.md).
 const values = [
   {
-    icon: ScanSearch,
+    animation: "/lottie/value-scan.json",
     title: "Сначала понимаем причину",
     description: "Диагностика показывает не только слабую тему, но и тип ошибки, который мешает баллам расти.",
   },
   {
-    icon: HeartHandshake,
+    animation: "/lottie/value-care.json",
     title: "Бережно, но требовательно",
     description: "Поддерживаем ребёнка и одновременно держим фокус на измеримом результате.",
   },
   {
-    icon: Users,
+    animation: "/lottie/value-team.json",
     title: "Родитель — часть команды",
     description: "Без догадок и вечного «как дела?»: прогресс, расписание и следующий шаг видны в кабинете.",
   },
   {
-    icon: ChartNoAxesCombined,
+    animation: "/lottie/value-growth.json",
     title: "Решения принимают данные",
     description: "Пробные работы меняют маршрут подготовки, если динамика идёт не по плану.",
   },
@@ -81,8 +82,8 @@ export default async function AboutPage() {
           {values.map((value, i) => (
             <AnimeReveal key={value.title} delay={i * 0.08}>
               <div className="group h-full min-h-72 bg-surface p-7 transition-colors hover:bg-accent">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-sunken text-brand-ink group-hover:bg-[#0b2233] group-hover:text-white">
-                  <value.icon className="h-5 w-5" strokeWidth={1.75} />
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken p-1.5 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110">
+                  <LottieIcon src={value.animation} trigger="hover" className="h-full w-full" />
                 </span>
                 <h3 className="mt-12 font-display text-xl font-bold leading-tight tracking-[-0.035em] text-ink">{value.title}</h3>
                 <p className="mt-3 text-sm leading-6 text-muted group-hover:text-ink-soft">{value.description}</p>
