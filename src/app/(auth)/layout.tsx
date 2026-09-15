@@ -6,7 +6,7 @@ import { Constellation } from "@/components/marketing/constellation";
 export default function AuthLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <main className="grid min-h-screen flex-1 gap-3 bg-background p-3 lg:grid-cols-[1.05fr_0.95fr]">
-      <section className="paper-noise relative hidden overflow-hidden rounded-[2rem] bg-[#10241f] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <section className="paper-noise relative hidden overflow-hidden rounded-[2rem] bg-panel p-12 text-white lg:flex lg:flex-col lg:justify-between">
         <div aria-hidden className="science-grid pointer-events-none absolute inset-0 opacity-50" />
         <Constellation
           variant="watermark"
