@@ -82,7 +82,7 @@ export default async function AboutPage() {
           {values.map((value, i) => (
             <AnimeReveal key={value.title} delay={i * 0.08}>
               <div className="group h-full min-h-72 bg-surface p-7 transition-colors hover:bg-accent">
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken p-1.5 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken p-1.5 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110 dark:bg-[#dbe6ee]">
                   <LottieIcon src={value.animation} trigger="hover" className="h-full w-full" />
                 </span>
                 <h3 className="mt-12 font-display text-xl font-bold leading-tight tracking-[-0.035em] text-ink">{value.title}</h3>
