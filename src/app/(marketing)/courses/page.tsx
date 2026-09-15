@@ -70,6 +70,7 @@ export default async function CoursesPage({
         <div className="mt-8">
           <EmptyState
             icon={SearchX}
+            animation="/lottie/empty.lottie"
             title="Ничего не найдено"
             description="Попробуйте изменить запрос или сбросить фильтры."
           />
