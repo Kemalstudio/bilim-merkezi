@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { AnimeReveal } from "@/components/shared/anime-reveal";
+import { LottieIcon } from "@/components/shared/lottie-icon";
 import { Constellation } from "@/components/marketing/constellation";
 import { getContacts } from "@/lib/site-settings";
 import { phoneHref } from "@/lib/site-settings-schema";
@@ -14,11 +14,14 @@ export default async function ContactPage() {
   // Managed in /bilim/admin/site/contacts.
   const contacts = await getContacts();
 
+  // Each icon plays when its card is hovered (see public/lottie/CREDITS.md).
   const channels = [
-    { icon: Mail, label: "Email", value: contacts.email, href: `mailto:${contacts.email}` },
-    { icon: Phone, label: "Телефон", value: contacts.phone, href: phoneHref(contacts.phone) },
-    { icon: MapPin, label: "Адрес", value: contacts.address, href: undefined },
-    ...(contacts.hours ? [{ icon: Clock, label: "Часы работы", value: contacts.hours, href: undefined }] : []),
+    { animation: "/lottie/contact-email.json", label: "Email", value: contacts.email, href: `mailto:${contacts.email}` },
+    { animation: "/lottie/contact-phone.json", label: "Телефон", value: contacts.phone, href: phoneHref(contacts.phone) },
+    { animation: "/lottie/contact-location.json", label: "Адрес", value: contacts.address, href: undefined },
+    ...(contacts.hours
+      ? [{ animation: "/lottie/contact-clock.json", label: "Часы работы", value: contacts.hours, href: undefined }]
+      : []),
   ];
 
   return (
@@ -47,14 +50,16 @@ export default async function ContactPage() {
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="grid overflow-hidden rounded-[1.6rem] border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
-          {channels.map(({ icon: Icon, label, value, href }, index) => (
+          {channels.map(({ animation, label, value, href }, index) => (
             <AnimeReveal key={label} delay={index * 0.07} className="bg-surface">
               <div className="group min-h-64 bg-surface p-7 transition-colors hover:bg-accent">
                 <div className="flex items-start justify-between">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-sunken text-brand-ink group-hover:bg-[#0b2233] group-hover:text-white">
-                    <Icon className="h-5 w-5" strokeWidth={1.8} />
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-surface-sunken p-1.5 transition-transform duration-300 group-hover:-rotate-3 group-hover:scale-110">
+                    <LottieIcon src={animation} trigger="hover" className="h-full w-full" />
                   </span>
-                  <span className="font-display text-xs font-bold text-muted">0{index + 1}</span>
+                  <span className="font-display text-xs font-bold text-muted transition-transform duration-300 group-hover:-translate-y-0.5">
+                    0{index + 1}
+                  </span>
                 </div>
                 <p className="mt-12 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-muted">
                   {label}
