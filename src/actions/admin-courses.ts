@@ -84,9 +84,9 @@ export async function createCourseAction(
   });
 
   await logAction(admin.id, "course.created", "course", course.id, { title: course.title });
-  revalidatePath("/admin/courses");
+  revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
-  redirect("/admin/courses");
+  redirect("/bilim/admin/courses");
 }
 
 export async function updateCourseAction(
@@ -140,9 +140,9 @@ export async function updateCourseAction(
   });
 
   await logAction(admin.id, "course.updated", "course", courseId);
-  revalidatePath("/admin/courses");
+  revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
-  redirect("/admin/courses");
+  redirect("/bilim/admin/courses");
 }
 
 export async function deleteCourseAction(courseId: string): Promise<CourseActionState> {
@@ -157,7 +157,7 @@ export async function deleteCourseAction(courseId: string): Promise<CourseAction
 
   await prisma.course.delete({ where: { id: courseId } });
   await logAction(admin.id, "course.deleted", "course", courseId);
-  revalidatePath("/admin/courses");
+  revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
 }
 
@@ -165,6 +165,6 @@ export async function toggleCoursePublishedAction(courseId: string, published: b
   const admin = await requireRole("ADMIN", "MODERATOR");
   await prisma.course.update({ where: { id: courseId }, data: { published } });
   await logAction(admin.id, published ? "course.published" : "course.unpublished", "course", courseId);
-  revalidatePath("/admin/courses");
+  revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
 }
