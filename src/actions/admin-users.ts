@@ -13,5 +13,5 @@ export async function updateUserRoleAction(userId: string, role: Role) {
   }
   await prisma.user.update({ where: { id: userId }, data: { role } });
   await logAction(admin.id, "user.role_changed", "user", userId, { role });
-  revalidatePath("/admin/users");
+  revalidatePath("/bilim/admin/users");
 }
