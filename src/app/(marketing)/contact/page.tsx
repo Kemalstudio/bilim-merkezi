@@ -2,20 +2,25 @@ import type { Metadata } from "next";
 import { Clock, Mail, MapPin, Phone } from "lucide-react";
 import { AnimeReveal } from "@/components/shared/anime-reveal";
 import { Constellation } from "@/components/marketing/constellation";
+import { getContacts } from "@/lib/site-settings";
+import { phoneHref } from "@/lib/site-settings-schema";
 
 export const metadata: Metadata = {
   title: "Контакты",
   description: "Свяжитесь с командой Bilim Merkezi.",
 };
 
-const channels = [
-  { icon: Mail, label: "Email", value: "hello@bilim.tm", href: "mailto:hello@bilim.tm" },
-  { icon: Phone, label: "Телефон", value: "+993 12 345 678", href: "tel:+99312345678" },
-  { icon: MapPin, label: "Адрес", value: "Ашхабад, Туркменистан", href: undefined },
-  { icon: Clock, label: "Часы работы", value: "Пн–Пт, 9:00–18:00", href: undefined },
-];
+export default async function ContactPage() {
+  // Managed in /bilim/admin/site/contacts.
+  const contacts = await getContacts();
 
-export default function ContactPage() {
+  const channels = [
+    { icon: Mail, label: "Email", value: contacts.email, href: `mailto:${contacts.email}` },
+    { icon: Phone, label: "Телефон", value: contacts.phone, href: phoneHref(contacts.phone) },
+    { icon: MapPin, label: "Адрес", value: contacts.address, href: undefined },
+    ...(contacts.hours ? [{ icon: Clock, label: "Часы работы", value: contacts.hours, href: undefined }] : []),
+  ];
+
   return (
     <div className="pb-24">
       <section className="px-3 sm:px-5">
