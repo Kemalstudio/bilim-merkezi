@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarDays, Clock, Signal, Star, Users as UsersIcon } from "lucide-react";
+import { CalendarDays, CalendarRange, Clock, LineChart, Repeat, Signal, Star, Users as UsersIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { formatCurrency, formatDate, initials, pluralizeRu } from "@/lib/utils";
 import { getLevelLabel } from "@/lib/course-visuals";
+import { lessonsPerWeekLabel, totalHoursLabel, weeklyHoursLabel, weeksLabel } from "@/lib/course-schedule";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CourseCover } from "@/components/courses/course-cover";
-import { Curriculum } from "@/components/courses/curriculum";
+import { WeeklyProgram } from "@/components/courses/weekly-program";
 import { ReviewList } from "@/components/courses/review-list";
 import { ReviewForm } from "@/components/courses/review-form";
 import { EnrollmentDialog } from "@/components/courses/enrollment-dialog";
@@ -56,6 +57,12 @@ export default async function CourseDetailPage({
   const avgRating =
     reviewCount > 0 ? course.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
   const hasDiscount = course.discountPrice != null && Number(course.discountPrice) < Number(course.price);
+  const format = {
+    lessonsPerWeek: course.lessonsPerWeek,
+    weeklyHoursMin: course.weeklyHoursMin,
+    weeklyHoursMax: course.weeklyHoursMax,
+  };
+  const weekCount = course.modules.length;
 
   const enrollment = session?.user
     ? await prisma.enrollment.findFirst({
@@ -81,6 +88,16 @@ export default async function CourseDetailPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <nav aria-label="Навигация" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted">
+        <Link href="/courses" className="transition-colors hover:text-ink">
+          Каталог
+        </Link>
+        <span aria-hidden>/</span>
+        <Link href={`/courses?category=${course.category.slug}`} className="transition-colors hover:text-ink">
+          {course.category.name}
+        </Link>
+      </nav>
+
       <div className="grid gap-10 lg:grid-cols-[1fr_360px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -89,10 +106,10 @@ export default async function CourseDetailPage({
             {!course.published && <Badge variant="rose">Черновик</Badge>}
           </div>
 
-          <h1 className="mt-4 font-display text-3xl font-bold text-ink sm:text-4xl">{course.title}</h1>
-          <p className="mt-4 text-lg text-ink-soft">{course.summary}</p>
+          <h1 className="mt-4 font-display text-3xl font-bold tracking-[-0.04em] text-ink sm:text-5xl">{course.title}</h1>
+          <p className="mt-4 max-w-3xl text-lg text-ink-soft">{course.summary}</p>
 
-          <div className="mt-6 flex flex-wrap items-center gap-6 text-sm text-ink-soft">
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-ink-soft">
             <span className="flex items-center gap-1.5 text-amber">
               <Star className="h-4 w-4 fill-current" />
               {avgRating > 0 ? avgRating.toFixed(1) : "новый курс"}
@@ -104,15 +121,19 @@ export default async function CourseDetailPage({
             </span>
             <span className="flex items-center gap-1.5">
               <UsersIcon className="h-4 w-4 text-brand-start" /> {course._count.enrollments}{" "}
-              {pluralizeRu(course._count.enrollments, ["студент", "студента", "студентов"])}
+              {pluralizeRu(course._count.enrollments, ["ученик", "ученика", "учеников"])}
             </span>
             <span className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-brand-start" /> {course.durationHours}{" "}
-              {pluralizeRu(course.durationHours, ["час", "часа", "часов"])}
+              <Repeat className="h-4 w-4 text-brand-start" /> {lessonsPerWeekLabel(course.lessonsPerWeek)}
             </span>
             <span className="flex items-center gap-1.5">
-              <Signal className="h-4 w-4 text-brand-start" /> {getLevelLabel(course.level)}
+              <Clock className="h-4 w-4 text-brand-start" /> {weeklyHoursLabel(format)}
             </span>
+            {weekCount > 0 && (
+              <span className="flex items-center gap-1.5">
+                <CalendarRange className="h-4 w-4 text-brand-start" /> {weeksLabel(weekCount)}
+              </span>
+            )}
             {course.startDate && (
               <span className="flex items-center gap-1.5 text-accent-deep">
                 <CalendarDays className="h-4 w-4" /> Старт {formatDate(course.startDate)}
@@ -121,25 +142,21 @@ export default async function CourseDetailPage({
           </div>
 
           <div className="mt-10">
-            <h2 className="font-display text-xl font-bold text-ink">О курсе</h2>
+            <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">О курсе</h2>
             <p className="mt-3 whitespace-pre-line text-ink-soft">{course.description}</p>
           </div>
 
-          <div className="mt-10">
-            <h2 className="font-display text-xl font-bold text-ink">Программа курса</h2>
+          <div className="mt-12" id="program">
+            <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">Программа по неделям</h2>
             <p className="mt-1 text-sm text-muted">
-              {course.modules.length} {pluralizeRu(course.modules.length, ["модуль", "модуля", "модулей"])} ·{" "}
-              {(() => {
-                const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-                return `${lessonCount} ${pluralizeRu(lessonCount, ["урок", "урока", "уроков"])}`;
-              })()}
+              Выберите неделю, чтобы увидеть уроки и темы. Часы в неделю включают уроки, практику и домашние задания.
             </p>
-            <div className="mt-4">
-              <Curriculum modules={course.modules} />
+            <div className="mt-5">
+              <WeeklyProgram weeks={course.modules} format={format} />
             </div>
           </div>
 
-          <div className="mt-10 rounded-2xl border border-border bg-surface p-6">
+          <div className="mt-12 rounded-2xl border border-border bg-surface p-6">
             <h2 className="font-display text-xl font-bold text-ink">Преподаватель</h2>
             <div className="mt-4 flex items-center gap-4">
               <Avatar className="h-14 w-14">
@@ -211,16 +228,33 @@ export default async function CourseDetailPage({
                   </li>
                 )}
                 <li className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-brand-start" /> {course.durationHours}{" "}
-                  {pluralizeRu(course.durationHours, ["час", "часа", "часов"])} видео и практики
+                  <Repeat className="h-4 w-4 text-brand-start" /> {lessonsPerWeekLabel(course.lessonsPerWeek)}
                 </li>
+                <li className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-brand-start" /> {weeklyHoursLabel(format)} учёбы
+                </li>
+                {weekCount > 0 && (
+                  <li className="flex items-center gap-2">
+                    <CalendarRange className="h-4 w-4 text-brand-start" /> {weeksLabel(weekCount)} ·{" "}
+                    {totalHoursLabel(weekCount, format)}
+                  </li>
+                )}
                 <li className="flex items-center gap-2">
                   <Signal className="h-4 w-4 text-brand-start" /> Уровень: {getLevelLabel(course.level)}
                 </li>
                 <li className="flex items-center gap-2">
-                  <UsersIcon className="h-4 w-4 text-brand-start" /> Доступ навсегда
+                  <LineChart className="h-4 w-4 text-brand-start" /> Прогресс виден в личном кабинете
                 </li>
               </ul>
+
+              {weekCount > 0 && (
+                <a
+                  href="#program"
+                  className="mt-5 block rounded-xl bg-surface-sunken px-4 py-3 text-center text-sm font-bold text-brand-ink transition-colors hover:bg-border"
+                >
+                  Смотреть программу по неделям
+                </a>
+              )}
             </div>
           </div>
         </aside>
