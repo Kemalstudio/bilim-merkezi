@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "admin:create": "tsx prisma/create-admin.ts"
+    "admin:create": "tsx prisma/create-admin.ts",
+    "postinstall": "node scripts/copy-lottie-wasm.mjs",
+    "courses:programs": "tsx prisma/apply-course-programs.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

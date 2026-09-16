@@ -24,11 +24,11 @@ export function AccountSidebar() {
             key={link.href}
             href={link.href}
             className={cn(
-              "flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold transition-colors",
+              "group flex shrink-0 items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-bold transition-colors active:scale-[0.98]",
               isActive ? "bg-accent text-[#0b2233]" : "text-ink-soft hover:bg-surface-sunken/60"
             )}
           >
-            <link.icon className="h-4 w-4" /> {link.label}
+            <link.icon className="h-4 w-4 group-hover:animate-icon-wiggle" /> {link.label}
           </Link>
         );
       })}
