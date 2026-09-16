@@ -35,7 +35,9 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
             summary: course.summary,
             description: course.description,
             level: course.level,
-            durationHours: course.durationHours,
+            lessonsPerWeek: course.lessonsPerWeek,
+            weeklyHoursMin: course.weeklyHoursMin,
+            weeklyHoursMax: course.weeklyHoursMax,
             startDate: course.startDate?.toISOString() ?? null,
             price: course.price.toString(),
             discountPrice: course.discountPrice?.toString() ?? null,
@@ -48,7 +50,8 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
             featured: course.featured,
             modules: course.modules.map((m) => ({
               title: m.title,
-              lessons: m.lessons.map((l) => ({ title: l.title, durationMin: l.durationMin })),
+              goal: m.goal,
+              lessons: m.lessons.map((l) => ({ title: l.title, durationMin: l.durationMin, topics: l.topics })),
             })),
           }}
         />
