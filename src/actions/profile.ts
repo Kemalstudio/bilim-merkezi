@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/rbac";
 import { updateProfileSchema, changePasswordSchema } from "@/lib/validations/profile";
+import { getI18n } from "@/lib/i18n/server";
+import { issueText } from "@/lib/i18n/ui";
 
 export type ProfileActionState = { error?: string; success?: string } | undefined;
 
@@ -13,14 +15,15 @@ export async function updateProfileAction(
   formData: FormData
 ): Promise<ProfileActionState> {
   const user = await requireUser();
+  const { t } = await getI18n();
   const parsed = updateProfileSchema.safeParse({ name: formData.get("name") });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте данные" };
+    return { error: issueText(t, parsed.error.issues) };
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { name: parsed.data.name } });
   revalidatePath("/account/settings");
-  return { success: "Профиль обновлён" };
+  return { success: t.errors.profileUpdated };
 }
 
 export async function changePasswordAction(
@@ -28,26 +31,27 @@ export async function changePasswordAction(
   formData: FormData
 ): Promise<ProfileActionState> {
   const user = await requireUser();
+  const { t } = await getI18n();
   const parsed = changePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),
     newPassword: formData.get("newPassword"),
     confirmNewPassword: formData.get("confirmNewPassword"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте данные" };
+    return { error: issueText(t, parsed.error.issues) };
   }
 
   const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
   if (!dbUser?.passwordHash) {
-    return { error: "Смена пароля недоступна для аккаунтов, вошедших через Google" };
+    return { error: t.errors.passwordUnavailable };
   }
 
   const valid = await bcrypt.compare(parsed.data.currentPassword, dbUser.passwordHash);
   if (!valid) {
-    return { error: "Текущий пароль неверен" };
+    return { error: t.errors.currentPasswordWrong };
   }
 
   const newHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
-  return { success: "Пароль изменён" };
+  return { success: t.errors.passwordChanged };
 }
