@@ -2,11 +2,11 @@
 
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
 import { loginSchema } from "@/lib/validations/auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 export type AdminLoginState = { error?: string } | undefined;
 
@@ -14,7 +14,7 @@ const ADMIN_HOME = "/bilim/admin";
 const INVALID_CREDENTIALS = "Неверный email или пароль";
 
 export async function adminLoginAction(_prev: AdminLoginState, formData: FormData): Promise<AdminLoginState> {
-  const ip = (await headers()).get("x-forwarded-for") ?? "unknown";
+  const ip = await getClientIp();
   if (!rateLimit(`admin-login:${ip}`, 8, 60_000).success) {
     return { error: "Слишком много попыток. Попробуйте через минуту." };
   }
@@ -35,10 +35,10 @@ export async function adminLoginAction(_prev: AdminLoginState, formData: FormDat
   }
 
   const callbackUrl = formData.get("callbackUrl");
-  const redirectTo = typeof callbackUrl === "string" && callbackUrl.startsWith(ADMIN_HOME) ? callbackUrl : ADMIN_HOME;
+  const redirectTo = safeCallbackUrl(callbackUrl, ADMIN_HOME, ADMIN_HOME);
 
   try {
-    await signIn("credentials", { email, password: parsed.data.password, redirectTo });
+    await signIn("credentials", { login: email, password: parsed.data.password, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) return { error: INVALID_CREDENTIALS };
     throw error;
