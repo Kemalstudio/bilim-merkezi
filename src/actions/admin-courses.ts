@@ -11,6 +11,14 @@ import { estimateDurationHours } from "@/lib/course-schedule";
 
 export type CourseActionState = { error?: string } | undefined;
 
+/** Non-empty trimmed lines of a textarea. */
+function lines(formData: FormData, name: string) {
+  return String(formData.get(name) ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function parseCourseForm(formData: FormData) {
   const raw = {
     title: formData.get("title"),
@@ -30,6 +38,17 @@ function parseCourseForm(formData: FormData) {
     coverImage: formData.get("coverImage") || undefined,
     published: formData.get("published") === "on",
     featured: formData.get("featured") === "on",
+    outcomes: lines(formData, "outcomes"),
+    skills: lines(formData, "skills"),
+    requirements: lines(formData, "requirements"),
+    audience: lines(formData, "audience"),
+    ageMin: formData.get("ageMin") || undefined,
+    ageMax: formData.get("ageMax") || undefined,
+    groupSize: formData.get("groupSize") || undefined,
+    teachingLanguage: formData.get("teachingLanguage") || undefined,
+    certificate: formData.get("certificate") === "on",
+    track: formData.get("track") || undefined,
+    levelCode: formData.get("levelCode") || undefined,
     modules: JSON.parse((formData.get("modulesJson") as string) || "[]"),
   };
   return courseSchema.safeParse(raw);
@@ -56,6 +75,17 @@ function courseFields(data: CourseInput) {
     coverImage: data.coverImage,
     published: data.published,
     featured: data.featured,
+    outcomes: data.outcomes,
+    skills: data.skills,
+    requirements: data.requirements,
+    audience: data.audience,
+    ageMin: data.ageMin ?? null,
+    ageMax: data.ageMax ?? null,
+    groupSize: data.groupSize ?? null,
+    teachingLanguage: data.teachingLanguage || null,
+    certificate: data.certificate,
+    track: data.track || null,
+    levelCode: data.track ? data.levelCode || null : null,
   };
 }
 
