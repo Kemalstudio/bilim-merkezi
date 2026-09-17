@@ -10,6 +10,8 @@ import { applyPromo, isPromoUsable, STRIPE_MIN_CHARGE } from "@/lib/pricing";
 import { enrollmentDocumentSchema } from "@/lib/validations/enrollment";
 import { childSchema } from "@/lib/validations/child";
 import { realEmail } from "@/lib/phone";
+import { getI18n } from "@/lib/i18n/server";
+import { issueText, type Ui } from "@/lib/i18n/ui";
 
 // Returned rather than thrown: in production Next.js replaces thrown messages with a generic
 // one, and the parent needs to know it was, say, the promo code that failed.
@@ -26,10 +28,11 @@ export type EnrollActionResult = { error: string } | undefined;
  */
 export async function enrollAction(courseId: string, formData: FormData): Promise<EnrollActionResult> {
   const user = await requireUser();
+  const { t } = await getI18n();
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course || !course.published) {
-    return { error: "Курс не найден или снят с публикации" };
+    return { error: t.errors.courseNotFound };
   }
 
   const document = enrollmentDocumentSchema.safeParse({
@@ -38,7 +41,7 @@ export async function enrollAction(courseId: string, formData: FormData): Promis
     documentFile: formData.get("documentFile"),
   });
   if (!document.success) {
-    return { error: document.error.issues[0]?.message ?? "Проверьте поля формы" };
+    return { error: issueText(t, document.error.issues) };
   }
 
   let price = Number(course.discountPrice ?? course.price);
@@ -48,17 +51,17 @@ export async function enrollAction(courseId: string, formData: FormData): Promis
   if (promoInput) {
     const promo = await prisma.promoCode.findUnique({ where: { code: promoInput } });
     if (!isPromoUsable(promo)) {
-      return { error: "Промокод недействителен или истёк" };
+      return { error: t.errors.promoInvalid };
     }
     promoCodeId = promo.id;
     price = applyPromo(price, promo);
   }
 
   if (price > 0 && price < STRIPE_MIN_CHARGE) {
-    return { error: "Сумма к оплате слишком мала для оплаты картой. Свяжитесь с нами." };
+    return { error: t.errors.amountTooSmall };
   }
 
-  const child = await resolveChild(user.id, formData);
+  const child = await resolveChild(user.id, formData, t);
   if ("error" in child) return child;
 
   const existing = await prisma.enrollment.findFirst({
@@ -152,20 +155,20 @@ export async function enrollAction(courseId: string, formData: FormData): Promis
     checkoutUrl = checkoutSession.url;
   } catch (error) {
     console.error("[enroll] could not start checkout", error);
-    return { error: "Платёжный сервис временно недоступен. Попробуйте ещё раз через минуту." };
+    return { error: t.errors.paymentUnavailable };
   }
 
-  if (!checkoutUrl) return { error: "Не удалось создать сессию оплаты" };
+  if (!checkoutUrl) return { error: t.errors.checkoutFailed };
   redirect(checkoutUrl);
 }
 
 /** Picks the parent's existing child, or creates one from the wizard's step 1. */
-async function resolveChild(parentId: string, formData: FormData) {
+async function resolveChild(parentId: string, formData: FormData, t: Ui) {
   const childId = formData.get("childId");
 
   if (typeof childId === "string" && childId) {
     const child = await prisma.child.findFirst({ where: { id: childId, parentId } });
-    return child ?? { error: "Профиль ребёнка не найден" };
+    return child ?? { error: t.errors.childNotFound };
   }
 
   const parsed = childSchema.safeParse({
@@ -176,12 +179,12 @@ async function resolveChild(parentId: string, formData: FormData) {
     notes: null,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Заполните данные ребёнка" };
+    return { error: issueText(t, parsed.error.issues) };
   }
 
   const siblings = await prisma.child.count({ where: { parentId } });
   if (siblings >= 10) {
-    return { error: "Достигнут лимит профилей детей в одном аккаунте." };
+    return { error: t.errors.childLimit };
   }
   return prisma.child.create({
     data: { ...parsed.data, parentId, avatarHue: (siblings * 67) % 360 },
