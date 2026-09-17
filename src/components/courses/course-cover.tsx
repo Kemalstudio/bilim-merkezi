@@ -18,6 +18,9 @@ export function CourseCover({
         categorySlug === "marketing" && "bg-[#f0b968] text-[#0b2233]",
         categorySlug === "languages" && "bg-[#f4a83a] text-[#0b2233]",
         categorySlug === "business" && "bg-[#115a78]",
+        categorySlug === "math" && "bg-[#0e9e8a]",
+        categorySlug === "science" && "bg-[#3a6f8f]",
+        categorySlug === "creative" && "bg-[#c2527a]",
         className
       )}
     >
