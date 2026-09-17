@@ -8,6 +8,7 @@ import { formatCurrency, formatDate, initials, pluralizeRu } from "@/lib/utils";
 import { getLevelLabel } from "@/lib/course-visuals";
 import { formatMinutes, lessonsPerWeekLabel, totalHoursLabel, weekLoad, weeklyHoursLabel, weeksLabel } from "@/lib/course-schedule";
 import { ageRangeLabel } from "@/lib/course-levels";
+import { siteUrl } from "@/lib/site-url";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -31,9 +32,10 @@ export async function generateMetadata({
   const { slug } = await params;
   const course = await prisma.course.findUnique({
     where: { slug },
-    select: { title: true, summary: true },
+    select: { title: true, summary: true, published: true },
   });
-  if (!course) return {};
+  // Drafts stay out of titles and link previews.
+  if (!course?.published) return {};
   return { title: course.title, description: course.summary };
 }
 
@@ -50,7 +52,7 @@ export default async function CourseDetailPage({
     include: {
       category: true,
       modules: { orderBy: { position: "asc" }, include: { lessons: { orderBy: { position: "asc" } } } },
-      reviews: { include: { user: true }, orderBy: { createdAt: "desc" } },
+      reviews: { include: { user: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
       _count: { select: { enrollments: true, libraryResources: { where: { published: true } } } },
     },
   });
@@ -89,7 +91,6 @@ export default async function CourseDetailPage({
       })
     : [];
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   // schema.org Course, so search engines can show duration, level and price in results.
   const jsonLd = {
     "@context": "https://schema.org",
@@ -97,7 +98,7 @@ export default async function CourseDetailPage({
     name: course.title,
     description: course.summary,
     url: `${siteUrl}/courses/${course.slug}`,
-    provider: { "@type": "Organization", name: "Bilim Merkezi", sameAs: siteUrl || undefined },
+    provider: { "@type": "Organization", name: "Bilim Merkezi", sameAs: siteUrl },
     educationalLevel: getLevelLabel(course.level),
     inLanguage: "ru",
     teaches: course.skills.length > 0 ? course.skills : undefined,
@@ -121,14 +122,16 @@ export default async function CourseDetailPage({
       : {}),
   };
 
-  const enrollment = session?.user
-    ? await prisma.enrollment.findFirst({
+  // A parent can enroll several children, so every enrollment on this course matters.
+  const myEnrollments = session?.user
+    ? await prisma.enrollment.findMany({
         where: { userId: session.user.id, courseId: course.id },
-        orderBy: { status: "asc" },
+        select: { status: true },
       })
-    : null;
+    : [];
 
-  const isActive = enrollment?.status === "ACTIVE";
+  const isActive = myEnrollments.some((item) => item.status === "ACTIVE");
+  const hasPending = myEnrollments.some((item) => item.status === "PENDING");
 
   // Powers step one of the enrollment wizard, so a returning parent picks a
   // saved child instead of retyping their details.
@@ -317,21 +320,34 @@ export default async function CourseDetailPage({
               <div className="mt-6">
                 {!session?.user ? (
                   <Button asChild size="lg" className="w-full">
-                    <Link href={`/login?callbackUrl=/courses/${course.slug}`}>Войти, чтобы записаться</Link>
+                    <Link href={`/login?callbackUrl=${encodeURIComponent(`/courses/${course.slug}`)}`}>
+                      Войти и записать ребёнка
+                    </Link>
                   </Button>
-                ) : isActive ? (
-                  <Link
-                    href="/account/enrollments"
-                    className="flex h-11 w-full items-center justify-center rounded-full bg-emerald/10 text-sm font-semibold text-emerald"
-                  >
-                    Вы записаны · Перейти к курсу
-                  </Link>
                 ) : (
-                  <EnrollmentDialog
-                    courseId={course.id}
-                    label={enrollment?.status === "PENDING" ? "Продолжить оплату" : "Записать ребёнка"}
-                    profiles={enrollableChildren}
-                  />
+                  <div className="flex flex-col gap-3">
+                    {isActive && (
+                      <Link
+                        href="/account/enrollments"
+                        className="flex h-11 w-full items-center justify-center rounded-full bg-emerald/10 text-sm font-semibold text-emerald transition-colors hover:bg-emerald/15"
+                      >
+                        Вы записаны · Мои курсы
+                      </Link>
+                    )}
+                    <EnrollmentDialog
+                      courseId={course.id}
+                      label={
+                        hasPending ? "Продолжить оплату" : isActive ? "Записать ещё одного ребёнка" : "Записать ребёнка"
+                      }
+                      variant={isActive && !hasPending ? "outline" : "primary"}
+                      profiles={enrollableChildren}
+                    />
+                  </div>
+                )}
+                {!session?.user && (
+                  <p className="mt-3 text-center text-xs text-muted">
+                    Нет аккаунта? Он создаётся при первом входе по номеру телефона — это бесплатно.
+                  </p>
                 )}
               </div>
 
