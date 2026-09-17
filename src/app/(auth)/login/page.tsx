@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
 import { isGoogleAuthEnabled } from "@/lib/env";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 export const metadata: Metadata = { title: "Вход" };
 
@@ -10,5 +11,6 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string }>;
 }) {
   const { callbackUrl } = await searchParams;
-  return <LoginForm googleEnabled={isGoogleAuthEnabled} callbackUrl={callbackUrl} />;
+  const next = safeCallbackUrl(callbackUrl, "") || undefined;
+  return <LoginForm googleEnabled={isGoogleAuthEnabled} callbackUrl={next} />;
 }
