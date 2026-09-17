@@ -2,11 +2,11 @@
 
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
-import { loginSchema, registerSchema } from "@/lib/validations/auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { credentialsSchema, registerSchema } from "@/lib/validations/auth";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 
 export type ActionState = { error?: string } | undefined;
 
@@ -14,7 +14,7 @@ export async function registerAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const ip = (await headers()).get("x-forwarded-for") ?? "unknown";
+  const ip = await getClientIp();
   if (!rateLimit(`register:${ip}`, 5, 60_000).success) {
     return { error: "Слишком много попыток. Попробуйте через минуту." };
   }
@@ -29,6 +29,8 @@ export async function registerAction(
     return { error: parsed.error.issues[0]?.message ?? "Проверьте введённые данные" };
   }
 
+  const redirectTo = safeCallbackUrl(formData.get("callbackUrl"), "/account");
+
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (existing) {
     return { error: "Пользователь с таким email уже зарегистрирован" };
@@ -41,9 +43,9 @@ export async function registerAction(
 
   try {
     await signIn("credentials", {
-      email: parsed.data.email,
+      login: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: "/account",
+      redirectTo,
     });
   } catch (error) {
     if (error instanceof AuthError) {
@@ -57,21 +59,21 @@ export async function signOutAction() {
   await signOut({ redirectTo: "/" });
 }
 
-export async function googleSignInAction() {
-  await signIn("google", { redirectTo: "/account" });
+export async function googleSignInAction(formData: FormData) {
+  await signIn("google", { redirectTo: safeCallbackUrl(formData.get("callbackUrl"), "/account") });
 }
 
 export async function loginAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const ip = (await headers()).get("x-forwarded-for") ?? "unknown";
+  const ip = await getClientIp();
   if (!rateLimit(`login:${ip}`, 10, 60_000).success) {
     return { error: "Слишком много попыток. Попробуйте через минуту." };
   }
 
-  const parsed = loginSchema.safeParse({
-    email: formData.get("email"),
+  const parsed = credentialsSchema.safeParse({
+    login: formData.get("login"),
     password: formData.get("password"),
   });
   if (!parsed.success) {
@@ -79,18 +81,17 @@ export async function loginAction(
   }
 
   const callbackUrl = formData.get("callbackUrl");
-  const redirectTo =
-    typeof callbackUrl === "string" && callbackUrl.startsWith("/") ? callbackUrl : "/account";
+  const redirectTo = safeCallbackUrl(callbackUrl, "/account");
 
   try {
     await signIn("credentials", {
-      email: parsed.data.email,
+      login: formData.get("login"),
       password: parsed.data.password,
       redirectTo,
     });
   } catch (error) {
     if (error instanceof AuthError) {
-      return { error: "Неверный email или пароль" };
+      return { error: "Неверный логин или пароль" };
     }
     throw error;
   }
