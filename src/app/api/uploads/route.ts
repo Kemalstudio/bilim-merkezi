@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { auth } from "@/lib/auth";
+import { PUBLIC_UPLOADS_DIR, receiveUpload, storeUpload } from "@/lib/uploads";
+
+// SVG is deliberately absent: it can carry script and these files are served from our origin.
+const IMAGE_TYPES = ["png", "jpg", "gif", "webp"] as const;
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -10,25 +12,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 403 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Файл не найден" }, { status: 400 });
-  }
-  if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "Допустимы только изображения" }, { status: 400 });
-  }
-  if (file.size > 5 * 1024 * 1024) {
-    return NextResponse.json({ error: "Максимальный размер файла — 5 МБ" }, { status: 400 });
-  }
+  const upload = await receiveUpload(request, {
+    allowed: IMAGE_TYPES,
+    maxBytes: 5 * 1024 * 1024,
+    typeError: "Допустимы изображения PNG, JPG, GIF или WebP",
+    sizeError: "Максимальный размер файла — 5 МБ",
+  });
+  if (!upload.ok) return upload.response;
 
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(uploadsDir, { recursive: true });
-
-  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadsDir, filename), bytes);
-
+  const filename = await storeUpload(PUBLIC_UPLOADS_DIR, upload.file);
   return NextResponse.json({ url: `/uploads/${filename}` });
 }
