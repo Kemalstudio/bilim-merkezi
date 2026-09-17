@@ -10,6 +10,7 @@ import { getBaseDictionary } from "@/lib/i18n/dictionaries";
 import { getTextOverrides, removeSetting, writeSetting } from "@/lib/site-settings";
 import {
   animationsSchema,
+  assistantSchema,
   conformsTo,
   contactsSchema,
   heroReportSchema,
@@ -29,6 +30,7 @@ const SCHEMAS: Record<SettingKey, z.ZodType> = {
   contacts: contactsSchema,
   languages: languagesSchema,
   heroReport: heroReportSchema,
+  assistant: assistantSchema,
 };
 
 const isSettingKey = (key: unknown): key is SettingKey => typeof key === "string" && Object.hasOwn(SCHEMAS, key);

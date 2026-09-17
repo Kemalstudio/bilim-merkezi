@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/rbac";
 import { childSchema } from "@/lib/validations/child";
+import { getI18n } from "@/lib/i18n/server";
+import { issueText } from "@/lib/i18n/ui";
 
 export type ChildActionState = { error?: string; success?: boolean; childId?: string } | undefined;
 
@@ -30,14 +32,15 @@ export async function createChildAction(
   formData: FormData
 ): Promise<ChildActionState> {
   const user = await requireUser();
+  const { t } = await getI18n();
   const parsed = parseChildForm(formData);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте поля формы" };
+    return { error: issueText(t, parsed.error.issues) };
   }
 
   const siblings = await prisma.child.count({ where: { parentId: user.id } });
   if (siblings >= 10) {
-    return { error: "Достигнут лимит профилей детей в одном аккаунте." };
+    return { error: t.errors.childLimit };
   }
 
   const child = await prisma.child.create({
@@ -79,12 +82,13 @@ export async function updateChildAction(
   formData: FormData
 ): Promise<ChildActionState> {
   const user = await requireUser();
+  const { t } = await getI18n();
   const existing = await findOwnedChild(childId, user.id);
-  if (!existing) return { error: "Профиль ребёнка не найден" };
+  if (!existing) return { error: t.errors.childNotFound };
 
   const parsed = parseChildForm(formData);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте поля формы" };
+    return { error: issueText(t, parsed.error.issues) };
   }
 
   await prisma.child.update({ where: { id: existing.id }, data: parsed.data });
@@ -97,14 +101,15 @@ export async function updateChildAction(
 
 export async function deleteChildAction(childId: string): Promise<ChildActionState> {
   const user = await requireUser();
+  const { t } = await getI18n();
   const existing = await findOwnedChild(childId, user.id);
-  if (!existing) return { error: "Профиль ребёнка не найден" };
+  if (!existing) return { error: t.errors.childNotFound };
 
   const activeEnrollments = await prisma.enrollment.count({
     where: { childId: existing.id, status: "ACTIVE" },
   });
   if (activeEnrollments > 0) {
-    return { error: "Нельзя удалить профиль с активными записями на курсы." };
+    return { error: t.errors.childHasActive };
   }
 
   await prisma.child.delete({ where: { id: existing.id } });
