@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
+import { formatPhone, realEmail } from "@/lib/phone";
 import { ProfileForm } from "@/components/account/profile-form";
 import { PasswordForm } from "@/components/account/password-form";
 
@@ -13,7 +14,7 @@ export default async function AccountSettingsPage() {
   return (
     <div className="flex flex-col gap-8">
       <h1 className="font-display text-2xl font-bold text-ink">Настройки</h1>
-      <ProfileForm defaultName={user.name ?? ""} email={user.email} />
+      <ProfileForm defaultName={user.name ?? ""} email={realEmail(user.email)} phone={user.phone ? formatPhone(user.phone) : null} />
       {user.passwordHash && <PasswordForm />}
     </div>
   );
