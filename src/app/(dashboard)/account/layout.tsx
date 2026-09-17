@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
+import { getAssistantSettings } from "@/lib/site-settings";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { AccountSidebar } from "@/components/account/account-sidebar";
+import { AssistantWidget } from "@/components/assistant/assistant-widget";
 
-export default function DashboardLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function DashboardLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const assistant = await getAssistantSettings();
+
   return (
     <>
       <SiteHeader />
@@ -14,6 +18,7 @@ export default function DashboardLayout({ children }: Readonly<{ children: React
         </div>
       </main>
       <SiteFooter />
+      {assistant.enabled && <AssistantWidget />}
     </>
   );
 }
