@@ -239,6 +239,23 @@ h1, h2, h3, h4, .font-display {
   animation: sheet-in-right 220ms ease-out;
 }
 
+/* The assistant panel grows from the launcher in the corner. */
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.animate-panel-in {
+  animation: panel-in 200ms ease-out;
+  transform-origin: bottom right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-panel-in {
+    animation: none;
+  }
+}
+
 @keyframes mesh-drift-a {
   0%, 100% { transform: translate(0, 0); }
   50% { transform: translate(30px, 20px); }
