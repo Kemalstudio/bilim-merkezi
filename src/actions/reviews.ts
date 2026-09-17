@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/rbac";
 import { reviewSchema } from "@/lib/validations/review";
+import { getI18n } from "@/lib/i18n/server";
+import { issueText } from "@/lib/i18n/ui";
 
 export type ReviewActionState = { error?: string } | undefined;
 
@@ -12,6 +14,7 @@ export async function createReviewAction(
   formData: FormData
 ): Promise<ReviewActionState> {
   const user = await requireUser();
+  const { t } = await getI18n();
 
   const parsed = reviewSchema.safeParse({
     courseId: formData.get("courseId"),
@@ -19,7 +22,7 @@ export async function createReviewAction(
     comment: formData.get("comment") || undefined,
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Проверьте данные отзыва" };
+    return { error: issueText(t, parsed.error.issues) };
   }
 
   // A parent can hold several enrollments on one course (one per child), so
@@ -28,7 +31,7 @@ export async function createReviewAction(
     where: { userId: user.id, courseId: parsed.data.courseId, status: "ACTIVE" },
   });
   if (!enrollment) {
-    return { error: "Оставить отзыв можно только после записи на курс" };
+    return { error: t.errors.reviewNeedsEnrollment };
   }
 
   const course = await prisma.course.findUnique({
