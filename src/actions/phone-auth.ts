@@ -2,13 +2,13 @@
 
 import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { signIn } from "@/lib/auth";
 import { issueOtp } from "@/lib/otp";
 import { isSmsSimulated } from "@/lib/sms";
 import { maskPhone } from "@/lib/phone";
-import { rateLimit } from "@/lib/rate-limit";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { safeCallbackUrl } from "@/lib/safe-redirect";
 import {
   requestOtpSchema,
   resetPasswordSchema,
@@ -22,7 +22,7 @@ export type RequestOtpState =
   | undefined;
 
 async function clientKey() {
-  return (await headers()).get("x-forwarded-for") ?? "unknown";
+  return getClientIp();
 }
 
 export async function requestOtpAction(
@@ -88,8 +88,7 @@ export async function verifyOtpAction(
   }
 
   const callbackUrl = formData.get("callbackUrl");
-  const redirectTo =
-    typeof callbackUrl === "string" && callbackUrl.startsWith("/") ? callbackUrl : "/account";
+  const redirectTo = safeCallbackUrl(callbackUrl, "/account");
 
   try {
     await signIn("phone-otp", { ...parsed.data, redirectTo });
