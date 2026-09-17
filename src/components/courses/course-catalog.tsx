@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Search, X } from "lucide-react";
+import { LayoutGrid, Loader2, Search, Table2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, pluralizeRu } from "@/lib/utils";
+import { AGE_GROUPS, DURATION_GROUPS } from "@/lib/course-levels";
+
+const ANY = "any";
 
 export type CategoryOption = { slug: string; name: string; count: number };
 
@@ -51,6 +54,9 @@ export function CourseCatalog({
   const category = searchParams.get("category") ?? "";
   const level = searchParams.get("level") ?? "";
   const sort = searchParams.get("sort") ?? "popular";
+  const age = searchParams.get("age") ?? "";
+  const duration = searchParams.get("duration") ?? "";
+  const view = searchParams.get("view") === "table" ? "table" : "grid";
   const [query, setQuery] = useState(q);
   const [syncedQ, setSyncedQ] = useState(q);
 
@@ -85,16 +91,20 @@ export function CourseCatalog({
 
   const categoryName = categories.find((c) => c.slug === category)?.name;
   const levelName = LEVELS.find((l) => l.value === level && l.value)?.label;
+  const ageName = AGE_GROUPS.find((group) => group.value === age)?.label;
+  const durationName = DURATION_GROUPS.find((group) => group.value === duration)?.label;
   const activeFilters = [
     q && { key: "q", label: `«${q}»` },
     categoryName && { key: "category", label: categoryName },
     levelName && { key: "level", label: levelName },
+    ageName && { key: "age", label: ageName },
+    durationName && { key: "duration", label: durationName },
   ].filter(Boolean) as { key: string; label: string }[];
 
   return (
     <div>
       <div className="sticky top-[5.25rem] z-30 rounded-[1.3rem] border border-border/80 bg-surface/90 p-3 shadow-glow-sm backdrop-blur-xl sm:p-4">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="flex flex-col gap-3 2xl:flex-row 2xl:items-center">
           <div className="relative flex-1">
             <Search aria-hidden className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <Input
@@ -123,7 +133,7 @@ export function CourseCatalog({
             )}
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
             <div role="group" aria-label="Уровень" className="flex rounded-xl bg-surface-sunken p-1">
               {LEVELS.map((option) => {
                 const selected = level === option.value;
@@ -144,8 +154,36 @@ export function CourseCatalog({
               })}
             </div>
 
+            <Select value={age || ANY} onValueChange={(value) => update({ age: value === ANY ? null : value })}>
+              <SelectTrigger className="whitespace-nowrap sm:w-44" aria-label="Возраст ребёнка">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>Любой возраст</SelectItem>
+                {AGE_GROUPS.map((group) => (
+                  <SelectItem key={group.value} value={group.value}>
+                    {group.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={duration || ANY} onValueChange={(value) => update({ duration: value === ANY ? null : value })}>
+              <SelectTrigger className="whitespace-nowrap sm:w-52" aria-label="Длительность курса">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>Любая длительность</SelectItem>
+                {DURATION_GROUPS.map((group) => (
+                  <SelectItem key={group.value} value={group.value}>
+                    {group.label} учёбы
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={sort} onValueChange={(value) => update({ sort: value === "popular" ? null : value })}>
-              <SelectTrigger className="sm:w-52" aria-label="Сортировка">
+              <SelectTrigger className="sm:w-48" aria-label="Сортировка">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -217,13 +255,33 @@ export function CourseCatalog({
             type="button"
             onClick={() => {
               setQuery("");
-              update({ q: null, category: null, level: null });
+              update({ q: null, category: null, level: null, age: null, duration: null });
             }}
             className="cursor-pointer text-xs font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
           >
             Сбросить всё
           </button>
         )}
+        <div role="group" aria-label="Вид каталога" className="ml-auto flex rounded-xl bg-surface-sunken p-1">
+          {[
+            { value: "grid", label: "Карточки", icon: LayoutGrid },
+            { value: "table", label: "Таблица", icon: Table2 },
+          ].map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={view === value}
+              onClick={() => update({ view: value === "grid" ? null : value })}
+              className={cn(
+                "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95",
+                view === value ? "bg-surface text-ink shadow-glow-sm" : "text-muted hover:text-ink"
+              )}
+            >
+              <Icon aria-hidden className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className={cn("mt-5 transition-opacity duration-300", isPending && "pointer-events-none opacity-50")} aria-busy={isPending}>

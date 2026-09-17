@@ -3,6 +3,8 @@ import { PrismaClient, type CourseLevel } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { coursePrograms, PROGRAM_FORMAT, programDurationHours } from "./course-programs";
+import { courseDetails, courseDetailsData } from "./course-details";
+import { extraCategories, newCourseData, newCourses } from "./new-courses";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -438,7 +440,7 @@ async function main() {
 
   console.log("Создание категорий...");
   const categoryRecords = await Promise.all(
-    categories.map((c) => prisma.category.create({ data: c }))
+    [...categories, ...extraCategories].map((c) => prisma.category.create({ data: c }))
   );
   const categoryBySlug = new Map(categoryRecords.map((c) => [c.slug, c]));
 
@@ -467,6 +469,7 @@ async function main() {
         featured: c.featured ?? false,
         published: true,
         categoryId: category.id,
+        ...(courseDetails[c.slug] ? courseDetailsData(courseDetails[c.slug]) : {}),
         modules: {
           create: weeks.map((week, index) => ({
             title: week.title,
@@ -485,6 +488,11 @@ async function main() {
       },
     });
     courseRecords.push(course);
+  }
+  for (const c of newCourses) {
+    courseRecords.push(
+      await prisma.course.create({ data: newCourseData(c, categoryBySlug.get(c.categorySlug)!.id) })
+    );
   }
 
   console.log("Создание пользователей...");
