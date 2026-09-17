@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Star, Clock, CalendarDays } from "lucide-react";
+import { Star, Clock, CalendarDays, UserRound } from "lucide-react";
 import { CourseCover } from "@/components/courses/course-cover";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatShortDate, pluralizeRu } from "@/lib/utils";
 import { getLevelLabel } from "@/lib/course-visuals";
+import { ageRangeLabel } from "@/lib/course-levels";
 
 export type CourseCardData = {
   slug: string;
@@ -23,6 +24,10 @@ export type CourseCardData = {
   lessonsPerWeek: number;
   weeklyHoursMin: number;
   weeklyHoursMax: number;
+  ageMin: number | null;
+  ageMax: number | null;
+  /** Ladder step such as "A2", shown next to the level. */
+  levelCode: string | null;
 };
 
 export function CourseCard({ course }: { course: CourseCardData }) {
@@ -36,6 +41,8 @@ export function CourseCard({ course }: { course: CourseCardData }) {
     course.weeks > 0
       ? `${course.weeks * course.weeklyHoursMin}–${course.weeks * course.weeklyHoursMax} ч`
       : `${course.durationHours} ч`;
+
+  const age = ageRangeLabel(course.ageMin, course.ageMax);
 
   const format = [
     { value: course.lessonsPerWeek, label: `${pluralizeRu(course.lessonsPerWeek, ["урок", "урока", "уроков"])} в нед.` },
@@ -65,7 +72,15 @@ export function CourseCard({ course }: { course: CourseCardData }) {
       <div className="flex flex-1 flex-col gap-3 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="brand">{course.category.name}</Badge>
-          <Badge variant="neutral">{getLevelLabel(course.level)}</Badge>
+          <Badge variant="neutral">
+            {getLevelLabel(course.level)}
+            {course.levelCode && ` · ${course.levelCode}`}
+          </Badge>
+          {age && (
+            <Badge variant="amber">
+              <UserRound aria-hidden className="h-3 w-3" /> {age}
+            </Badge>
+          )}
         </div>
 
         <h3 className="font-display text-lg font-bold leading-snug tracking-[-0.03em] text-ink transition-colors group-hover:text-brand-ink line-clamp-2">
