@@ -1,18 +1,25 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarDays, CalendarRange, Clock, LineChart, Repeat, Signal, Star, Users as UsersIcon } from "lucide-react";
+import { Award, BookOpen, CalendarDays, CalendarRange, Clock, LineChart, NotebookPen, Repeat, Signal, Star, UserRound, Users as UsersIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { formatCurrency, formatDate, initials, pluralizeRu } from "@/lib/utils";
 import { getLevelLabel } from "@/lib/course-visuals";
-import { lessonsPerWeekLabel, totalHoursLabel, weeklyHoursLabel, weeksLabel } from "@/lib/course-schedule";
+import { formatMinutes, lessonsPerWeekLabel, totalHoursLabel, weekLoad, weeklyHoursLabel, weeksLabel } from "@/lib/course-schedule";
+import { ageRangeLabel } from "@/lib/course-levels";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { CourseCover } from "@/components/courses/course-cover";
 import { WeeklyProgram } from "@/components/courses/weekly-program";
 import { ReviewList } from "@/components/courses/review-list";
+import { CourseOutcomes } from "@/components/courses/course-outcomes";
+import { CourseFacts } from "@/components/courses/course-facts";
+import { CourseAudience } from "@/components/courses/course-audience";
+import { GradingScale } from "@/components/courses/grading-scale";
+import { LevelLadder } from "@/components/courses/level-ladder";
+import { RatingSummary } from "@/components/courses/rating-summary";
 import { ReviewForm } from "@/components/courses/review-form";
 import { EnrollmentDialog } from "@/components/courses/enrollment-dialog";
 
@@ -44,7 +51,7 @@ export default async function CourseDetailPage({
       category: true,
       modules: { orderBy: { position: "asc" }, include: { lessons: { orderBy: { position: "asc" } } } },
       reviews: { include: { user: true }, orderBy: { createdAt: "desc" } },
-      _count: { select: { enrollments: true } },
+      _count: { select: { enrollments: true, libraryResources: { where: { published: true } } } },
     },
   });
 
@@ -63,6 +70,56 @@ export default async function CourseDetailPage({
     weeklyHoursMax: course.weeklyHoursMax,
   };
   const weekCount = course.modules.length;
+  const lessonMinutes = course.modules.flatMap((week) => week.lessons.map((lesson) => lesson.durationMin));
+  const lessonCount = lessonMinutes.length;
+  const age = ageRangeLabel(course.ageMin, course.ageMax);
+  // Practice hours over the whole course: the weekly remainder after lessons, per week.
+  const practice = course.modules.reduce(
+    (sum, week) => {
+      const load = weekLoad(week.lessons.map((lesson) => lesson.durationMin), format);
+      return { min: sum.min + load.practiceMin, max: sum.max + load.practiceMax };
+    },
+    { min: 0, max: 0 }
+  );
+
+  const ladderCourses = course.track
+    ? await prisma.course.findMany({
+        where: { track: course.track, published: true },
+        select: { slug: true, levelCode: true },
+      })
+    : [];
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+  // schema.org Course, so search engines can show duration, level and price in results.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: course.title,
+    description: course.summary,
+    url: `${siteUrl}/courses/${course.slug}`,
+    provider: { "@type": "Organization", name: "Bilim Merkezi", sameAs: siteUrl || undefined },
+    educationalLevel: getLevelLabel(course.level),
+    inLanguage: "ru",
+    teaches: course.skills.length > 0 ? course.skills : undefined,
+    typicalAgeRange: course.ageMin && course.ageMax ? `${course.ageMin}-${course.ageMax}` : undefined,
+    timeRequired: `PT${course.durationHours}H`,
+    hasCourseInstance: {
+      "@type": "CourseInstance",
+      courseMode: "Onsite",
+      startDate: course.startDate?.toISOString().slice(0, 10),
+      courseWorkload: `PT${course.weeklyHoursMax}H`,
+      instructor: { "@type": "Person", name: course.instructorName },
+    },
+    offers: {
+      "@type": "Offer",
+      category: "Paid",
+      price: (course.discountPrice ?? course.price).toString(),
+      priceCurrency: "USD",
+    },
+    ...(reviewCount > 0
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue: avgRating.toFixed(1), reviewCount } }
+      : {}),
+  };
 
   const enrollment = session?.user
     ? await prisma.enrollment.findFirst({
@@ -88,6 +145,11 @@ export default async function CourseDetailPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <script
+        type="application/ld+json"
+        // JSON.stringify output with "<" escaped cannot close the script tag.
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
+      />
       <nav aria-label="Навигация" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted">
         <Link href="/courses" className="transition-colors hover:text-ink">
           Каталог
@@ -102,7 +164,15 @@ export default async function CourseDetailPage({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="brand">{course.category.name}</Badge>
-            <Badge variant="neutral">{getLevelLabel(course.level)}</Badge>
+            <Badge variant="neutral">
+              {getLevelLabel(course.level)}
+              {course.levelCode && ` · ${course.levelCode}`}
+            </Badge>
+            {age && (
+              <Badge variant="amber">
+                <UserRound aria-hidden className="h-3 w-3" /> {age}
+              </Badge>
+            )}
             {!course.published && <Badge variant="rose">Черновик</Badge>}
           </div>
 
@@ -141,12 +211,39 @@ export default async function CourseDetailPage({
             )}
           </div>
 
+          <nav aria-label="Разделы курса" className="-mx-1 mt-8 flex gap-2 overflow-x-auto px-1 pb-1 text-sm font-semibold">
+            {[
+              ["#about", "О курсе"],
+              ["#details", "Детали"],
+              ["#program", "Программа"],
+              ...(course.track ? [["#levels", "Уровни"]] : []),
+              ["#grading", "Оценки"],
+              ["#reviews", "Отзывы"],
+            ].map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="shrink-0 rounded-full border border-border bg-surface px-3.5 py-1.5 text-ink-soft transition-colors hover:border-brand/40 hover:text-ink"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+
+          <div className="mt-8 scroll-mt-28" id="about">
+            <CourseOutcomes outcomes={course.outcomes} skills={course.skills} />
+          </div>
+
           <div className="mt-10">
             <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">О курсе</h2>
             <p className="mt-3 whitespace-pre-line text-ink-soft">{course.description}</p>
           </div>
 
-          <div className="mt-12" id="program">
+          <div className="mt-12 scroll-mt-28" id="details">
+            <CourseFacts course={course} format={format} weeks={weekCount} />
+          </div>
+
+          <div className="mt-12 scroll-mt-28" id="program">
             <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">Программа по неделям</h2>
             <p className="mt-1 text-sm text-muted">
               Выберите неделю, чтобы увидеть уроки и темы. Часы в неделю включают уроки, практику и домашние задания.
@@ -154,6 +251,20 @@ export default async function CourseDetailPage({
             <div className="mt-5">
               <WeeklyProgram weeks={course.modules} format={format} />
             </div>
+          </div>
+
+          {course.track && (
+            <div className="mt-12 scroll-mt-28" id="levels">
+              <LevelLadder track={course.track} levelCode={course.levelCode} courses={ladderCourses} />
+            </div>
+          )}
+
+          <div className="mt-12">
+            <CourseAudience audience={course.audience} requirements={course.requirements} />
+          </div>
+
+          <div className="mt-12 scroll-mt-28" id="grading">
+            <GradingScale certificate={course.certificate} />
           </div>
 
           <div className="mt-12 rounded-2xl border border-border bg-surface p-6">
@@ -170,11 +281,14 @@ export default async function CourseDetailPage({
             {course.instructorBio && <p className="mt-4 text-sm text-ink-soft">{course.instructorBio}</p>}
           </div>
 
-          <div className="mt-10">
+          <div className="mt-10 scroll-mt-28" id="reviews">
             <h2 className="font-display text-xl font-bold text-ink">
               Отзывы {reviewCount > 0 && `(${reviewCount})`}
             </h2>
             <div className="mt-4">
+              <RatingSummary ratings={course.reviews.map((review) => review.rating)} />
+            </div>
+            <div className="mt-6">
               {isActive && (
                 <div className="mb-6">
                   <ReviewForm courseId={course.id} hasReviewed={Boolean(myReview)} />
@@ -221,7 +335,38 @@ export default async function CourseDetailPage({
                 )}
               </div>
 
-              <ul className="mt-6 flex flex-col gap-3 text-sm text-ink-soft">
+              <p className="mt-6 text-xs font-bold uppercase tracking-[0.12em] text-muted">В курс входит</p>
+              <ul className="mt-3 flex flex-col gap-3 text-sm text-ink-soft">
+                {lessonCount > 0 && (
+                  <li className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-brand-start" /> {lessonCount}{" "}
+                    {pluralizeRu(lessonCount, ["урок", "урока", "уроков"])} · {formatMinutes(lessonMinutes.reduce((a, b) => a + b, 0))} с
+                    преподавателем
+                  </li>
+                )}
+                {practice.max > 0 && (
+                  <li className="flex items-center gap-2">
+                    <NotebookPen className="h-4 w-4 text-brand-start" /> Практика и домашние задания ·{" "}
+                    {practice.min === practice.max ? practice.max : `${practice.min}–${practice.max}`} ч
+                  </li>
+                )}
+                {course._count.libraryResources > 0 && (
+                  <li className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-brand-start" /> {course._count.libraryResources}{" "}
+                    {pluralizeRu(course._count.libraryResources, ["материал", "материала", "материалов"])} в библиотеке
+                  </li>
+                )}
+                {course.certificate && (
+                  <li className="flex items-center gap-2">
+                    <Award className="h-4 w-4 text-brand-start" /> Сертификат по итогам курса
+                  </li>
+                )}
+                {age && (
+                  <li className="flex items-center gap-2">
+                    <UserRound className="h-4 w-4 text-brand-start" /> Возраст: {age}
+                    {course.groupSize ? ` · группа до ${course.groupSize}` : ""}
+                  </li>
+                )}
                 {course.startDate && (
                   <li className="flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-brand-start" /> Старт {formatDate(course.startDate)}
@@ -241,6 +386,7 @@ export default async function CourseDetailPage({
                 )}
                 <li className="flex items-center gap-2">
                   <Signal className="h-4 w-4 text-brand-start" /> Уровень: {getLevelLabel(course.level)}
+                  {course.levelCode && ` (${course.levelCode})`}
                 </li>
                 <li className="flex items-center gap-2">
                   <LineChart className="h-4 w-4 text-brand-start" /> Прогресс виден в личном кабинете
