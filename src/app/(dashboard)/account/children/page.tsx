@@ -2,25 +2,28 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/rbac";
 import { getChildrenForParent } from "@/lib/children-data";
+import { getI18n } from "@/lib/i18n/server";
 import { ChildCard } from "@/components/account/child-card";
 import { ChildFormDialog } from "@/components/account/child-form-dialog";
 import { LottieIcon } from "@/components/shared/lottie-icon";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Мои дети" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.account.childrenMeta };
+}
 
 export default async function ChildrenPage() {
   const user = await requireUser();
-  const children = await getChildrenForParent(user.id);
+  const [children, { t }] = await Promise.all([getChildrenForParent(user.id), getI18n()]);
+  const a = t.account;
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-bold text-ink">Мои дети</h1>
-          <p className="mt-1 text-muted">
-            Профили, по которым вы записываете детей и следите за их результатами.
-          </p>
+          <h1 className="font-display text-2xl font-bold text-ink">{a.childrenTitle}</h1>
+          <p className="mt-1 text-muted">{a.childrenText}</p>
         </div>
         {children.length > 0 && <ChildFormDialog />}
       </div>
@@ -30,16 +33,13 @@ export default async function ChildrenPage() {
           {/* The face is drawn in navy, so it sits on a light disc in dark mode. */}
           <LottieIcon src="/lottie/kids-empty.json" className="h-24 w-24 rounded-full dark:bg-[#dbe6ee] dark:p-2" />
           <div>
-            <p className="font-display text-lg font-semibold text-ink">Пока ни одного профиля</p>
-            <p className="mt-1 max-w-md text-sm text-muted">
-              Добавьте ребёнка — и записывать его на курсы можно будет в два шага, а баллы за
-              экзамены появятся в кабинете автоматически.
-            </p>
+            <p className="font-display text-lg font-semibold text-ink">{a.noProfiles}</p>
+            <p className="mt-1 max-w-md text-sm text-muted">{a.noProfilesText}</p>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
             <ChildFormDialog />
             <Button asChild variant="outline">
-              <Link href="/courses">Посмотреть курсы</Link>
+              <Link href="/courses">{a.seeCourses}</Link>
             </Button>
           </div>
         </div>
