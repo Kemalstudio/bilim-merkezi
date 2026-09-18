@@ -4,11 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { AnimeReveal } from "@/components/shared/anime-reveal";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/shared/empty-state";
+import { getI18n } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Библиотека",
-  description: "Учебные материалы, конспекты и пособия для студентов Bilim Merkezi.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.library.metaTitle, description: t.library.metaDescription };
+}
 
 const FILE_ICONS: Record<string, typeof FileText> = {
   pdf: FileText,
@@ -20,31 +21,29 @@ const FILE_ICONS: Record<string, typeof FileText> = {
   jpeg: FileImage,
 };
 
-function formatSize(kb: number | null) {
-  if (!kb) return null;
-  if (kb < 1024) return `${kb} КБ`;
-  return `${(kb / 1024).toFixed(1)} МБ`;
-}
-
 export default async function LibraryPage() {
-  const resources = await prisma.libraryResource.findMany({
-    where: { published: true },
-    include: { course: { select: { title: true, slug: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [resources, { t, f }] = await Promise.all([
+    prisma.libraryResource.findMany({
+      where: { published: true },
+      include: { course: { select: { title: true, slug: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    getI18n(),
+  ]);
+  const l = t.library;
 
   return (
     <div>
       <section className="px-3 sm:px-5">
         <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-accent px-5 py-20 text-[#0b2233] sm:rounded-[2.4rem] sm:px-10 lg:py-24">
           <AnimeReveal className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.75fr_1.25fr]">
-            <span className="eyebrow !text-[#0b2233]">Библиотека Bilim</span>
+            <span className="eyebrow !text-[#0b2233]">{l.eyebrow}</span>
             <div>
             <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.98] tracking-[-0.06em] sm:text-7xl">
-              Материалы, которые помогают закрепить результат
+              {l.title}
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#41607a]">
-              Конспекты, памятки и тренировочные работы к программам — всё нужное собрано в одном месте.
+              {l.lead}
             </p>
             </div>
           </AnimeReveal>
@@ -56,8 +55,8 @@ export default async function LibraryPage() {
           <EmptyState
             icon={FileText}
             animation="/lottie/empty.json"
-            title="Пока нет материалов"
-            description="Скоро здесь появятся учебные пособия."
+            title={l.emptyTitle}
+            description={l.emptyText}
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -71,7 +70,7 @@ export default async function LibraryPage() {
                     className="group flex min-h-44 items-start gap-4 rounded-[1.4rem] border border-border bg-surface p-6 transition-all hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-glow-md"
                   >
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-[#0b2233] transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-105">
-                      <Icon className="h-5 w-5 group-hover:animate-icon-wiggle" strokeWidth={1.75} />
+                      <Icon aria-hidden className="h-5 w-5 group-hover:animate-icon-wiggle" strokeWidth={1.75} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <h3 className="font-display text-lg font-bold tracking-[-0.03em] text-ink transition-colors group-hover:text-brand-ink">
@@ -83,12 +82,12 @@ export default async function LibraryPage() {
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         {resource.course && <Badge variant="neutral">{resource.course.title}</Badge>}
                         <span className="text-xs uppercase text-muted">{resource.fileType}</span>
-                        {formatSize(resource.fileSizeKb) && (
-                          <span className="text-xs text-muted">· {formatSize(resource.fileSizeKb)}</span>
+                        {f.fileSize(resource.fileSizeKb) && (
+                          <span className="text-xs text-muted">· {f.fileSize(resource.fileSizeKb)}</span>
                         )}
                       </div>
                     </div>
-                    <Download className="h-4 w-4 shrink-0 text-muted transition-colors group-hover:text-brand-ink" />
+                    <Download aria-hidden className="h-4 w-4 shrink-0 text-muted transition-colors group-hover:text-brand-ink" />
                   </a>
                 </AnimeReveal>
               );
