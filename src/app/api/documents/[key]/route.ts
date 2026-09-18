@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getStorage } from "@/lib/storage";
 
-const PRIVATE_UPLOADS_DIR = path.join(process.cwd(), "private-uploads", "enrollment-documents");
-
-const MIME_BY_EXT: Record<string, string> = {
-  pdf: "application/pdf",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
-
-export async function GET(request: Request, { params }: { params: Promise<{ key: string }> }) {
+export async function GET(_request: Request, { params }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   // Reject anything but a bare filename we generated ourselves — blocks path traversal.
-  if (!/^[a-f0-9-]+\.[a-z0-9]+$/i.test(key)) {
+  if (!/^[a-f0-9-]{36}\.[a-z0-9]{2,5}$/i.test(key)) {
     return NextResponse.json({ error: "Некорректный файл" }, { status: 400 });
   }
 
@@ -37,17 +26,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ key:
     }
   }
 
-  try {
-    const bytes = await readFile(path.join(PRIVATE_UPLOADS_DIR, key));
-    const ext = key.split(".").pop()?.toLowerCase() ?? "";
-    const contentType = MIME_BY_EXT[ext] ?? "application/octet-stream";
-    return new NextResponse(new Uint8Array(bytes), {
-      headers: {
-        "Content-Type": contentType,
-        "Cache-Control": "private, no-store",
-      },
-    });
-  } catch {
+  const stored = await getStorage().get(`documents/${key}`);
+  if (!stored) {
     return NextResponse.json({ error: "Файл не найден" }, { status: 404 });
   }
+  return new NextResponse(new Uint8Array(stored.bytes), {
+    headers: {
+      "Content-Type": stored.contentType,
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Disposition": `inline; filename="${key}"`,
+    },
+  });
 }
