@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { Logo } from "@/components/marketing/logo";
 import { Constellation } from "@/components/marketing/constellation";
+import { getI18n } from "@/lib/i18n/server";
 
-export default function AuthLayout({ children }: Readonly<{ children: ReactNode }>) {
+export default async function AuthLayout({ children }: Readonly<{ children: ReactNode }>) {
+  const { t } = await getI18n();
   return (
     <main className="grid min-h-screen flex-1 gap-3 bg-background p-3 lg:grid-cols-[1.05fr_0.95fr]">
       <section className="paper-noise relative hidden overflow-hidden rounded-[2rem] bg-panel p-12 text-white lg:flex lg:flex-col lg:justify-between">
@@ -14,19 +16,19 @@ export default function AuthLayout({ children }: Readonly<{ children: ReactNode 
         />
         <Logo className="relative w-fit [&_span]:!text-white" />
         <div className="relative max-w-xl">
-          <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-accent">Кабинет родителя</p>
+          <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-accent">{t.auth.panelEyebrow}</p>
           <h1 className="mt-6 font-display text-5xl font-bold leading-[1.01] tracking-[-0.06em] xl:text-6xl">
-            Весь прогресс ребёнка — в одном спокойном месте.
+            {t.auth.panelTitle}
           </h1>
           <div className="mt-9 grid gap-3 text-sm text-white/60 sm:grid-cols-2">
-            {["Баллы и динамика", "Расписание занятий", "Статус записи", "Безопасный доступ"].map((item) => (
+            {t.auth.panelPoints.map((item) => (
               <span key={item} className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-accent" /> {item}
               </span>
             ))}
           </div>
         </div>
-        <p className="relative text-xs text-white/35">Bilim Merkezi · Ашхабад</p>
+        <p className="relative text-xs text-white/35">{t.auth.panelFooter}</p>
       </section>
 
       <section className="relative flex items-center justify-center px-2 py-10 sm:px-8">
