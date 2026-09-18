@@ -4,23 +4,25 @@ import { LottieIcon } from "@/components/shared/lottie-icon";
 import { Constellation } from "@/components/marketing/constellation";
 import { getContacts } from "@/lib/site-settings";
 import { phoneHref } from "@/lib/site-settings-schema";
+import { getI18n } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Контакты",
-  description: "Свяжитесь с командой Bilim Merkezi.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.contact.metaTitle, description: t.contact.metaDescription };
+}
 
 export default async function ContactPage() {
   // Managed in /bilim/admin/site/contacts.
-  const contacts = await getContacts();
+  const [contacts, { t }] = await Promise.all([getContacts(), getI18n()]);
+  const c = t.contact;
 
   // Each icon plays when its card is hovered (see public/lottie/CREDITS.md).
   const channels = [
-    { animation: "/lottie/contact-email.json", label: "Email", value: contacts.email, href: `mailto:${contacts.email}` },
-    { animation: "/lottie/contact-phone.json", label: "Телефон", value: contacts.phone, href: phoneHref(contacts.phone) },
-    { animation: "/lottie/contact-location.json", label: "Адрес", value: contacts.address, href: undefined },
+    { animation: "/lottie/contact-email.json", label: c.email, value: contacts.email, href: `mailto:${contacts.email}` },
+    { animation: "/lottie/contact-phone.json", label: c.phone, value: contacts.phone, href: phoneHref(contacts.phone) },
+    { animation: "/lottie/contact-location.json", label: c.address, value: contacts.address, href: undefined },
     ...(contacts.hours
-      ? [{ animation: "/lottie/contact-clock.json", label: "Часы работы", value: contacts.hours, href: undefined }]
+      ? [{ animation: "/lottie/contact-clock.json", label: c.hours, value: contacts.hours, href: undefined }]
       : []),
   ];
 
@@ -34,14 +36,13 @@ export default async function ContactPage() {
             className="absolute -bottom-40 -right-28 h-[38rem] w-[38rem] text-accent opacity-[0.09]"
           />
           <AnimeReveal className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
-            <span className="eyebrow !text-accent">Контакты</span>
+            <span className="eyebrow !text-accent">{c.eyebrow}</span>
             <div>
               <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.98] tracking-[-0.06em] sm:text-7xl">
-                Давайте обсудим цель вашего ребёнка
+                {c.title}
               </h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-white/55">
-                Ответим на вопросы о программе, формате и поступлении. Спокойно, по делу и без
-                навязчивых продаж.
+                {c.lead}
               </p>
             </div>
           </AnimeReveal>
