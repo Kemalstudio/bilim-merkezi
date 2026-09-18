@@ -4,8 +4,8 @@ import type { CourseLevel, Prisma } from "@prisma/client";
 import { SearchX } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { toCourseCardData } from "@/lib/course-mappers";
-import { formatMinutes } from "@/lib/course-schedule";
-import { pluralizeRu } from "@/lib/utils";
+import { getI18n } from "@/lib/i18n/server";
+import { tpl } from "@/lib/i18n/format";
 import { CourseCard } from "@/components/courses/course-card";
 import { CourseCatalog, type CategoryOption } from "@/components/courses/course-catalog";
 import { CourseGridReveal } from "@/components/courses/course-grid-reveal";
@@ -15,11 +15,14 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { ScrollFadeAway } from "@/components/shared/scroll-fade-away";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = {
-  title: "Каталог курсов",
-  description:
-    "Курсы по программированию, дизайну, маркетингу, языкам и бизнесу: 3 урока в неделю, программа по неделям и понятная нагрузка.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return {
+    title: t.catalog.metaTitle,
+    description: t.catalog.metaDescription,
+    alternates: { canonical: "/courses" },
+  };
+}
 
 const LEVELS: CourseLevel[] = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
 
@@ -41,7 +44,7 @@ function searchFilter(q: string): Prisma.CourseWhereInput {
 }
 
 export default async function CoursesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const params = await searchParams;
+  const [params, { t, f }] = await Promise.all([searchParams, getI18n()]);
   const q = params.q?.trim() ?? "";
   const level = LEVELS.find((value) => value === params.level);
   const sort = params.sort ?? "popular";
@@ -70,7 +73,7 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
   };
   const where: Prisma.CourseWhereInput = params.category ? { ...base, category: { slug: params.category } } : base;
 
-  const [categories, grouped, courses, overview, formats] = await Promise.all([
+  const [categories, grouped, courses, overview, formats, published] = await Promise.all([
     prisma.category.findMany({ orderBy: { name: "asc" } }),
     prisma.course.groupBy({ by: ["categoryId"], where: base, _count: { _all: true } }),
     prisma.course.findMany({
@@ -94,7 +97,9 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
       where: { published: true },
       _count: { _all: true },
     }),
+    prisma.course.groupBy({ by: ["categoryId"], where: { published: true }, _count: { _all: true } }),
   ]);
+  const publishedByCategory = new Set(published.map((group) => group.categoryId));
 
   // The hero shows a typical week: the weekly format most courses use, with their average lesson.
   const typical = formats.sort((a, b) => b._count._all - a._count._all)[0];
@@ -136,11 +141,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
   items.sort(sorters[sort] ?? sorters.popular);
 
   const countByCategory = new Map(grouped.map((group) => [group.categoryId, group._count._all]));
-  const categoryOptions: CategoryOption[] = categories.map((category) => ({
-    slug: category.slug,
-    name: category.name,
-    count: countByCategory.get(category.id) ?? 0,
-  }));
+  // Categories without published courses are left out, unless the visitor is filtering by one.
+  const categoryOptions: CategoryOption[] = categories
+    .filter((category) => publishedByCategory.has(category.id) || category.slug === params.category)
+    .map((category) => ({
+      slug: category.slug,
+      name: category.name,
+      count: countByCategory.get(category.id) ?? 0,
+    }));
   const allCount = grouped.reduce((sum, group) => sum + group._count._all, 0);
 
   // The weekly format range across the catalogue, for the hero stats.
@@ -161,10 +169,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
   const classShare = Math.min(1, classHours / weekHoursMax);
 
   const stats = [
-    { value: `${total}`, label: pluralizeRu(total, ["программа", "программы", "программ"]) },
-    { value: lessonsMin === lessonsMax ? `${lessonsMax}` : `${lessonsMin}–${lessonsMax}`, label: `${pluralizeRu(lessonsMax, ["урок", "урока", "уроков"])} в неделю` },
-    { value: `${hoursMin}–${hoursMax}`, label: "часов учёбы в неделю" },
+    { value: `${total}`, label: f.word(total, t.catalog.statPrograms) },
+    {
+      value: f.range(lessonsMin, lessonsMax),
+      label: tpl(t.catalog.statLessonsPerWeek, { lessons: f.word(lessonsMax, t.units.lesson) }),
+    },
+    { value: f.range(hoursMin, hoursMax), label: t.catalog.statHours },
   ];
+  const c = t.catalog;
 
   return (
     <div className="pb-24">
@@ -173,26 +185,25 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
           <div aria-hidden className="science-grid pointer-events-none absolute inset-0 opacity-40" />
           <div className="relative mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-end">
             <ScrollFadeAway>
-              <p className="eyebrow !text-accent">Программы Bilim</p>
+              <p className="eyebrow !text-accent">{c.eyebrow}</p>
               <h1 className="mt-6 max-w-4xl font-display text-5xl font-bold leading-[0.98] tracking-[-0.06em] sm:text-7xl">
-                Найдите курс под цель, а не просто предмет
+                {c.title}
               </h1>
               <p className="mt-6 max-w-xl text-base leading-7 text-white/55">
-                У каждого курса — программа по неделям: какие темы проходим на каждом уроке, сколько времени занимает
-                учёба и что ребёнок умеет к концу недели.
+                {c.lead}
               </p>
               <dl className="mt-10 grid max-w-xl grid-cols-3 border-t border-white/15 pt-6">
                 {stats.map((stat, index) => (
-                  <div key={stat.label} className={index === 0 ? "pr-4" : "border-l border-white/15 px-4"}>
-                    <dd className="font-display text-3xl font-bold tracking-[-0.05em] text-accent sm:text-4xl">{stat.value}</dd>
+                  <div key={stat.label} className={`flex flex-col-reverse ${index === 0 ? "pr-4" : "border-l border-white/15 px-4"}`}>
                     <dt className="mt-1 text-xs font-semibold leading-4 text-white/55">{stat.label}</dt>
+                    <dd className="font-display text-3xl font-bold tracking-[-0.05em] text-accent sm:text-4xl">{stat.value}</dd>
                   </div>
                 ))}
               </dl>
             </ScrollFadeAway>
 
             <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.06] p-6 backdrop-blur-sm sm:p-7">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">Как устроена типичная учебная неделя</p>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-accent">{c.typicalWeek}</p>
               <ol className="mt-5 flex flex-col gap-3">
                 {Array.from({ length: Math.min(weekLessons, 4) }, (_, index) => (
                   <li key={index} className="flex items-center gap-3">
@@ -200,8 +211,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
                       {index + 1}
                     </span>
                     <div>
-                      <p className="text-sm font-bold">Урок {index + 1} с преподавателем</p>
-                      <p className="text-xs text-white/50">≈ {formatMinutes(lessonMinutes)} · новые темы и разбор задач</p>
+                      <p className="text-sm font-bold">{tpl(c.lessonN, { n: index + 1 })}</p>
+                      <p className="text-xs text-white/50">{tpl(c.lessonHint, { minutes: f.minutes(lessonMinutes) })}</p>
                     </div>
                   </li>
                 ))}
@@ -210,10 +221,8 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
                     +
                   </span>
                   <div>
-                    <p className="text-sm font-bold">Практика и домашние задания</p>
-                    <p className="text-xs text-white/50">
-                      {practiceMin}–{practiceMax} ч в неделю · закрепляем темы уроков
-                    </p>
+                    <p className="text-sm font-bold">{c.practice}</p>
+                    <p className="text-xs text-white/50">{tpl(c.practiceHint, { min: practiceMin, max: practiceMax })}</p>
                   </div>
                 </li>
               </ol>
@@ -221,16 +230,14 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
                 <div
                   className="flex h-2.5 overflow-hidden rounded-full bg-white/10"
                   role="img"
-                  aria-label={`Около ${formatMinutes(classMinutes)} уроков и ${practiceMin}–${practiceMax} ч практики в неделю`}
+                  aria-label={tpl(c.weekBarLabel, { minutes: f.minutes(classMinutes), min: practiceMin, max: practiceMax })}
                 >
                   <span className="h-full bg-accent" style={{ width: `${classShare * 100}%` }} />
                   <span className="h-full bg-white/35" style={{ width: `${(1 - classShare) * 100}%` }} />
                 </div>
                 <div className="mt-2 flex justify-between text-xs font-semibold text-white/55">
-                  <span>С преподавателем ≈ {formatMinutes(classMinutes)}</span>
-                  <span>
-                    Всего {weekHoursMin}–{weekHoursMax} ч
-                  </span>
+                  <span>{tpl(c.withTeacher, { minutes: f.minutes(classMinutes) })}</span>
+                  <span>{tpl(c.total, { min: weekHoursMin, max: weekHoursMax })}</span>
                 </div>
               </div>
             </div>
@@ -258,12 +265,12 @@ export default async function CoursesPage({ searchParams }: { searchParams: Prom
                 <EmptyState
                   icon={SearchX}
                   animation="/lottie/empty.json"
-                  title="Ничего не найдено"
-                  description="Попробуйте другой запрос или возраст — ищем по названию курса, темам недель, урокам, навыкам и преподавателю."
+                  title={c.emptyTitle}
+                  description={c.emptyDescription}
                 />
               </div>
               <Button asChild variant="outline">
-                <Link href="/courses">Сбросить фильтры</Link>
+                <Link href="/courses">{c.resetFilters}</Link>
               </Button>
             </div>
           )}
