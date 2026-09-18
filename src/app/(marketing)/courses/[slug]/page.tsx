@@ -4,11 +4,11 @@ import type { Metadata } from "next";
 import { Award, BookOpen, CalendarDays, CalendarRange, Clock, LineChart, NotebookPen, Repeat, Signal, Star, UserRound, Users as UsersIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { formatCurrency, formatDate, initials, pluralizeRu } from "@/lib/utils";
-import { getLevelLabel } from "@/lib/course-visuals";
-import { formatMinutes, lessonsPerWeekLabel, totalHoursLabel, weekLoad, weeklyHoursLabel, weeksLabel } from "@/lib/course-schedule";
-import { ageRangeLabel } from "@/lib/course-levels";
+import { initials } from "@/lib/utils";
+import { weekLoad } from "@/lib/course-schedule";
 import { siteUrl } from "@/lib/site-url";
+import { getI18n } from "@/lib/i18n/server";
+import { LANGUAGE_TAGS, tpl } from "@/lib/i18n/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -24,11 +24,7 @@ import { RatingSummary } from "@/components/courses/rating-summary";
 import { ReviewForm } from "@/components/courses/review-form";
 import { EnrollmentDialog } from "@/components/courses/enrollment-dialog";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const course = await prisma.course.findUnique({
     where: { slug },
@@ -36,16 +32,17 @@ export async function generateMetadata({
   });
   // Drafts stay out of titles and link previews.
   if (!course?.published) return {};
-  return { title: course.title, description: course.summary };
+  return {
+    title: course.title,
+    description: course.summary,
+    alternates: { canonical: `/courses/${slug}` },
+    openGraph: { title: course.title, description: course.summary, url: `/courses/${slug}` },
+  };
 }
 
-export default async function CourseDetailPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const session = await auth();
+  const [session, { t, f, locale }] = await Promise.all([auth(), getI18n()]);
 
   const course = await prisma.course.findUnique({
     where: { slug },
@@ -63,8 +60,7 @@ export default async function CourseDetailPage({
   if (!course.published && !canPreviewUnpublished) notFound();
 
   const reviewCount = course.reviews.length;
-  const avgRating =
-    reviewCount > 0 ? course.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
+  const avgRating = reviewCount > 0 ? course.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
   const hasDiscount = course.discountPrice != null && Number(course.discountPrice) < Number(course.price);
   const format = {
     lessonsPerWeek: course.lessonsPerWeek,
@@ -74,7 +70,8 @@ export default async function CourseDetailPage({
   const weekCount = course.modules.length;
   const lessonMinutes = course.modules.flatMap((week) => week.lessons.map((lesson) => lesson.durationMin));
   const lessonCount = lessonMinutes.length;
-  const age = ageRangeLabel(course.ageMin, course.ageMax);
+  const age = f.ageRange(course.ageMin, course.ageMax);
+  const levelText = course.levelCode ? `${f.level(course.level)} (${course.levelCode})` : f.level(course.level);
   // Practice hours over the whole course: the weekly remainder after lessons, per week.
   const practice = course.modules.reduce(
     (sum, week) => {
@@ -84,12 +81,30 @@ export default async function CourseDetailPage({
     { min: 0, max: 0 }
   );
 
-  const ladderCourses = course.track
-    ? await prisma.course.findMany({
-        where: { track: course.track, published: true },
-        select: { slug: true, levelCode: true },
-      })
-    : [];
+  const [ladderCourses, myEnrollments, enrollableChildren] = await Promise.all([
+    course.track
+      ? prisma.course.findMany({
+          where: { track: course.track, published: true },
+          select: { slug: true, levelCode: true },
+        })
+      : Promise.resolve([]),
+    // A parent can enroll several children, so every enrollment on this course matters.
+    session?.user
+      ? prisma.enrollment.findMany({ where: { userId: session.user.id, courseId: course.id }, select: { status: true } })
+      : Promise.resolve([]),
+    // Powers step one of the enrollment wizard, so a returning parent picks a saved child.
+    session?.user
+      ? prisma.child.findMany({
+          where: { parentId: session.user.id },
+          orderBy: { createdAt: "asc" },
+          select: { id: true, firstName: true, lastName: true, grade: true, avatarHue: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const isActive = myEnrollments.some((item) => item.status === "ACTIVE");
+  const hasPending = myEnrollments.some((item) => item.status === "PENDING");
+  const myReview = session?.user ? course.reviews.find((review) => review.userId === session.user.id) : undefined;
 
   // schema.org Course, so search engines can show duration, level and price in results.
   const jsonLd = {
@@ -99,14 +114,14 @@ export default async function CourseDetailPage({
     description: course.summary,
     url: `${siteUrl}/courses/${course.slug}`,
     provider: { "@type": "Organization", name: "Bilim Merkezi", sameAs: siteUrl },
-    educationalLevel: getLevelLabel(course.level),
-    inLanguage: "ru",
+    educationalLevel: f.level(course.level),
+    inLanguage: LANGUAGE_TAGS[locale],
     teaches: course.skills.length > 0 ? course.skills : undefined,
     typicalAgeRange: course.ageMin && course.ageMax ? `${course.ageMin}-${course.ageMax}` : undefined,
     timeRequired: `PT${course.durationHours}H`,
     hasCourseInstance: {
       "@type": "CourseInstance",
-      courseMode: "Onsite",
+      courseMode: "Blended",
       startDate: course.startDate?.toISOString().slice(0, 10),
       courseWorkload: `PT${course.weeklyHoursMax}H`,
       instructor: { "@type": "Person", name: course.instructorName },
@@ -122,29 +137,14 @@ export default async function CourseDetailPage({
       : {}),
   };
 
-  // A parent can enroll several children, so every enrollment on this course matters.
-  const myEnrollments = session?.user
-    ? await prisma.enrollment.findMany({
-        where: { userId: session.user.id, courseId: course.id },
-        select: { status: true },
-      })
-    : [];
-
-  const isActive = myEnrollments.some((item) => item.status === "ACTIVE");
-  const hasPending = myEnrollments.some((item) => item.status === "PENDING");
-
-  // Powers step one of the enrollment wizard, so a returning parent picks a
-  // saved child instead of retyping their details.
-  const enrollableChildren = session?.user
-    ? await prisma.child.findMany({
-        where: { parentId: session.user.id },
-        orderBy: { createdAt: "asc" },
-        select: { id: true, firstName: true, lastName: true, grade: true, avatarHue: true },
-      })
-    : [];
-  const myReview = session?.user
-    ? course.reviews.find((review) => review.userId === session.user.id)
-    : undefined;
+  const sections = [
+    ["#about", t.course.sections.about],
+    ["#details", t.course.sections.details],
+    ["#program", t.course.sections.program],
+    ...(course.track ? [["#levels", t.course.sections.levels]] : []),
+    ["#grading", t.course.sections.grading],
+    ["#reviews", t.course.sections.reviews],
+  ];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -153,9 +153,9 @@ export default async function CourseDetailPage({
         // JSON.stringify output with "<" escaped cannot close the script tag.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
-      <nav aria-label="Навигация" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted">
+      <nav aria-label={t.course.breadcrumbs} className="mb-6 flex flex-wrap items-center gap-2 text-sm text-muted">
         <Link href="/courses" className="transition-colors hover:text-ink">
-          Каталог
+          {t.common.catalog}
         </Link>
         <span aria-hidden>/</span>
         <Link href={`/courses?category=${course.category.slug}`} className="transition-colors hover:text-ink">
@@ -168,7 +168,7 @@ export default async function CourseDetailPage({
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant="brand">{course.category.name}</Badge>
             <Badge variant="neutral">
-              {getLevelLabel(course.level)}
+              {f.level(course.level)}
               {course.levelCode && ` · ${course.levelCode}`}
             </Badge>
             {age && (
@@ -176,7 +176,7 @@ export default async function CourseDetailPage({
                 <UserRound aria-hidden className="h-3 w-3" /> {age}
               </Badge>
             )}
-            {!course.published && <Badge variant="rose">Черновик</Badge>}
+            {!course.published && <Badge variant="rose">{t.course.draft}</Badge>}
           </div>
 
           <h1 className="mt-4 font-display text-3xl font-bold tracking-[-0.04em] text-ink sm:text-5xl">{course.title}</h1>
@@ -184,45 +184,33 @@ export default async function CourseDetailPage({
 
           <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-ink-soft">
             <span className="flex items-center gap-1.5 text-amber">
-              <Star className="h-4 w-4 fill-current" />
-              {avgRating > 0 ? avgRating.toFixed(1) : "новый курс"}
-              {reviewCount > 0 && (
-                <span className="text-muted">
-                  ({reviewCount} {pluralizeRu(reviewCount, ["отзыв", "отзыва", "отзывов"])})
-                </span>
-              )}
+              <Star aria-hidden className="h-4 w-4 fill-current" />
+              {avgRating > 0 ? avgRating.toFixed(1) : t.course.newCourse}
+              {reviewCount > 0 && <span className="text-muted">({f.count(reviewCount, t.units.review)})</span>}
             </span>
             <span className="flex items-center gap-1.5">
-              <UsersIcon className="h-4 w-4 text-brand-start" /> {course._count.enrollments}{" "}
-              {pluralizeRu(course._count.enrollments, ["ученик", "ученика", "учеников"])}
+              <UsersIcon aria-hidden className="h-4 w-4 text-brand-start" /> {f.count(course._count.enrollments, t.units.student)}
             </span>
             <span className="flex items-center gap-1.5">
-              <Repeat className="h-4 w-4 text-brand-start" /> {lessonsPerWeekLabel(course.lessonsPerWeek)}
+              <Repeat aria-hidden className="h-4 w-4 text-brand-start" /> {f.lessonsPerWeek(course.lessonsPerWeek)}
             </span>
             <span className="flex items-center gap-1.5">
-              <Clock className="h-4 w-4 text-brand-start" /> {weeklyHoursLabel(format)}
+              <Clock aria-hidden className="h-4 w-4 text-brand-start" /> {f.weeklyHours(format)}
             </span>
             {weekCount > 0 && (
               <span className="flex items-center gap-1.5">
-                <CalendarRange className="h-4 w-4 text-brand-start" /> {weeksLabel(weekCount)}
+                <CalendarRange aria-hidden className="h-4 w-4 text-brand-start" /> {f.weeks(weekCount)}
               </span>
             )}
             {course.startDate && (
               <span className="flex items-center gap-1.5 text-accent-deep">
-                <CalendarDays className="h-4 w-4" /> Старт {formatDate(course.startDate)}
+                <CalendarDays aria-hidden className="h-4 w-4" /> {tpl(t.format.start, { date: f.date(course.startDate) })}
               </span>
             )}
           </div>
 
-          <nav aria-label="Разделы курса" className="-mx-1 mt-8 flex gap-2 overflow-x-auto px-1 pb-1 text-sm font-semibold">
-            {[
-              ["#about", "О курсе"],
-              ["#details", "Детали"],
-              ["#program", "Программа"],
-              ...(course.track ? [["#levels", "Уровни"]] : []),
-              ["#grading", "Оценки"],
-              ["#reviews", "Отзывы"],
-            ].map(([href, label]) => (
+          <nav aria-label={t.course.sectionsLabel} className="-mx-1 mt-8 flex gap-2 overflow-x-auto px-1 pb-1 text-sm font-semibold">
+            {sections.map(([href, label]) => (
               <a
                 key={href}
                 href={href}
@@ -238,7 +226,7 @@ export default async function CourseDetailPage({
           </div>
 
           <div className="mt-10">
-            <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">О курсе</h2>
+            <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">{t.course.aboutTitle}</h2>
             <p className="mt-3 whitespace-pre-line text-ink-soft">{course.description}</p>
           </div>
 
@@ -247,10 +235,8 @@ export default async function CourseDetailPage({
           </div>
 
           <div className="mt-12 scroll-mt-28" id="program">
-            <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">Программа по неделям</h2>
-            <p className="mt-1 text-sm text-muted">
-              Выберите неделю, чтобы увидеть уроки и темы. Часы в неделю включают уроки, практику и домашние задания.
-            </p>
+            <h2 className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">{t.course.programTitle}</h2>
+            <p className="mt-1 text-sm text-muted">{t.course.programHint}</p>
             <div className="mt-5">
               <WeeklyProgram weeks={course.modules} format={format} />
             </div>
@@ -271,7 +257,7 @@ export default async function CourseDetailPage({
           </div>
 
           <div className="mt-12 rounded-2xl border border-border bg-surface p-6">
-            <h2 className="font-display text-xl font-bold text-ink">Преподаватель</h2>
+            <h2 className="font-display text-xl font-bold text-ink">{t.course.instructor}</h2>
             <div className="mt-4 flex items-center gap-4">
               <Avatar className="h-14 w-14">
                 <AvatarFallback className="text-base">{initials(course.instructorName)}</AvatarFallback>
@@ -286,7 +272,7 @@ export default async function CourseDetailPage({
 
           <div className="mt-10 scroll-mt-28" id="reviews">
             <h2 className="font-display text-xl font-bold text-ink">
-              Отзывы {reviewCount > 0 && `(${reviewCount})`}
+              {t.course.reviewsTitle} {reviewCount > 0 && `(${reviewCount})`}
             </h2>
             <div className="mt-4">
               <RatingSummary ratings={course.reviews.map((review) => review.rating)} />
@@ -307,21 +293,15 @@ export default async function CourseDetailPage({
             <CourseCover categorySlug={course.category.slug} className="aspect-video w-full" />
             <div className="p-6">
               <div className="flex items-baseline gap-2">
-                {hasDiscount && (
-                  <span className="text-lg text-muted line-through">
-                    {formatCurrency(course.price.toString())}
-                  </span>
-                )}
-                <span className="font-display text-3xl font-bold text-ink">
-                  {formatCurrency((course.discountPrice ?? course.price).toString())}
-                </span>
+                {hasDiscount && <span className="text-lg text-muted line-through">{f.currency(course.price)}</span>}
+                <span className="font-display text-3xl font-bold text-ink">{f.currency(course.discountPrice ?? course.price)}</span>
               </div>
 
               <div className="mt-6">
                 {!session?.user ? (
                   <Button asChild size="lg" className="w-full">
                     <Link href={`/login?callbackUrl=${encodeURIComponent(`/courses/${course.slug}`)}`}>
-                      Войти и записать ребёнка
+                      {t.course.signInToEnroll}
                     </Link>
                   </Button>
                 ) : (
@@ -331,81 +311,78 @@ export default async function CourseDetailPage({
                         href="/account/enrollments"
                         className="flex h-11 w-full items-center justify-center rounded-full bg-emerald/10 text-sm font-semibold text-emerald transition-colors hover:bg-emerald/15"
                       >
-                        Вы записаны · Мои курсы
+                        {t.course.enrolled}
                       </Link>
                     )}
                     <EnrollmentDialog
                       courseId={course.id}
-                      label={
-                        hasPending ? "Продолжить оплату" : isActive ? "Записать ещё одного ребёнка" : "Записать ребёнка"
-                      }
+                      label={hasPending ? t.course.continuePayment : isActive ? t.course.enrollAnother : t.course.enroll}
                       variant={isActive && !hasPending ? "outline" : "primary"}
                       profiles={enrollableChildren}
                     />
                   </div>
                 )}
-                {!session?.user && (
-                  <p className="mt-3 text-center text-xs text-muted">
-                    Нет аккаунта? Он создаётся при первом входе по номеру телефона — это бесплатно.
-                  </p>
-                )}
+                {!session?.user && <p className="mt-3 text-center text-xs text-muted">{t.course.signInHint}</p>}
               </div>
 
-              <p className="mt-6 text-xs font-bold uppercase tracking-[0.12em] text-muted">В курс входит</p>
+              <p className="mt-6 text-xs font-bold uppercase tracking-[0.12em] text-muted">{t.course.includes}</p>
               <ul className="mt-3 flex flex-col gap-3 text-sm text-ink-soft">
                 {lessonCount > 0 && (
                   <li className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-brand-start" /> {lessonCount}{" "}
-                    {pluralizeRu(lessonCount, ["урок", "урока", "уроков"])} · {formatMinutes(lessonMinutes.reduce((a, b) => a + b, 0))} с
-                    преподавателем
+                    <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-brand-start" />
+                    {tpl(t.course.includesLessons, {
+                      lessons: f.count(lessonCount, t.units.lesson),
+                      minutes: f.minutes(lessonMinutes.reduce((a, b) => a + b, 0)),
+                    })}
                   </li>
                 )}
                 {practice.max > 0 && (
                   <li className="flex items-center gap-2">
-                    <NotebookPen className="h-4 w-4 text-brand-start" /> Практика и домашние задания ·{" "}
-                    {practice.min === practice.max ? practice.max : `${practice.min}–${practice.max}`} ч
+                    <NotebookPen aria-hidden className="h-4 w-4 shrink-0 text-brand-start" />
+                    {tpl(t.course.includesPractice, { hours: f.range(practice.min, practice.max) })}
                   </li>
                 )}
                 {course._count.libraryResources > 0 && (
                   <li className="flex items-center gap-2">
-                    <BookOpen className="h-4 w-4 text-brand-start" /> {course._count.libraryResources}{" "}
-                    {pluralizeRu(course._count.libraryResources, ["материал", "материала", "материалов"])} в библиотеке
+                    <BookOpen aria-hidden className="h-4 w-4 shrink-0 text-brand-start" />
+                    {tpl(t.course.includesLibrary, { materials: f.count(course._count.libraryResources, t.units.material) })}
                   </li>
                 )}
                 {course.certificate && (
                   <li className="flex items-center gap-2">
-                    <Award className="h-4 w-4 text-brand-start" /> Сертификат по итогам курса
+                    <Award aria-hidden className="h-4 w-4 shrink-0 text-brand-start" /> {t.course.includesCertificate}
                   </li>
                 )}
                 {age && (
                   <li className="flex items-center gap-2">
-                    <UserRound className="h-4 w-4 text-brand-start" /> Возраст: {age}
-                    {course.groupSize ? ` · группа до ${course.groupSize}` : ""}
+                    <UserRound aria-hidden className="h-4 w-4 shrink-0 text-brand-start" />
+                    {tpl(t.course.includesAge, { age })}
+                    {course.groupSize ? tpl(t.course.includesGroup, { size: course.groupSize }) : ""}
                   </li>
                 )}
                 {course.startDate && (
                   <li className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-brand-start" /> Старт {formatDate(course.startDate)}
+                    <CalendarDays aria-hidden className="h-4 w-4 shrink-0 text-brand-start" />
+                    {tpl(t.format.start, { date: f.date(course.startDate) })}
                   </li>
                 )}
                 <li className="flex items-center gap-2">
-                  <Repeat className="h-4 w-4 text-brand-start" /> {lessonsPerWeekLabel(course.lessonsPerWeek)}
+                  <Repeat aria-hidden className="h-4 w-4 shrink-0 text-brand-start" /> {f.lessonsPerWeek(course.lessonsPerWeek)}
                 </li>
                 <li className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-brand-start" /> {weeklyHoursLabel(format)} учёбы
+                  <Clock aria-hidden className="h-4 w-4 shrink-0 text-brand-start" /> {f.weeklyHours(format)}
                 </li>
                 {weekCount > 0 && (
                   <li className="flex items-center gap-2">
-                    <CalendarRange className="h-4 w-4 text-brand-start" /> {weeksLabel(weekCount)} ·{" "}
-                    {totalHoursLabel(weekCount, format)}
+                    <CalendarRange aria-hidden className="h-4 w-4 shrink-0 text-brand-start" /> {f.weeks(weekCount)} ·{" "}
+                    {tpl(t.course.includesStudy, { hours: f.totalHours(weekCount, format) })}
                   </li>
                 )}
                 <li className="flex items-center gap-2">
-                  <Signal className="h-4 w-4 text-brand-start" /> Уровень: {getLevelLabel(course.level)}
-                  {course.levelCode && ` (${course.levelCode})`}
+                  <Signal aria-hidden className="h-4 w-4 shrink-0 text-brand-start" /> {tpl(t.course.includesLevel, { level: levelText })}
                 </li>
                 <li className="flex items-center gap-2">
-                  <LineChart className="h-4 w-4 text-brand-start" /> Прогресс виден в личном кабинете
+                  <LineChart aria-hidden className="h-4 w-4 shrink-0 text-brand-start" /> {t.course.includesProgress}
                 </li>
               </ul>
 
@@ -414,7 +391,7 @@ export default async function CourseDetailPage({
                   href="#program"
                   className="mt-5 block rounded-xl bg-surface-sunken px-4 py-3 text-center text-sm font-bold text-brand-ink transition-colors hover:bg-border"
                 >
-                  Смотреть программу по неделям
+                  {t.course.seeProgram}
                 </a>
               )}
             </div>
