@@ -3,55 +3,45 @@ import { prisma } from "@/lib/prisma";
 import { AnimeReveal } from "@/components/shared/anime-reveal";
 import { LottieIcon } from "@/components/shared/lottie-icon";
 import { SplitHeading } from "@/components/shared/split-heading";
+import { getI18n } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "О нас",
-  description: "Bilim Merkezi — образовательный центр с прозрачной системой подготовки к экзаменам.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.about.metaTitle, description: t.about.metaDescription };
+}
 
 // Each icon plays when its card is hovered (see public/lottie/CREDITS.md).
-const values = [
-  {
-    animation: "/lottie/value-scan.json",
-    title: "Сначала понимаем причину",
-    description: "Диагностика показывает не только слабую тему, но и тип ошибки, который мешает баллам расти.",
-  },
-  {
-    animation: "/lottie/value-care.json",
-    title: "Бережно, но требовательно",
-    description: "Поддерживаем ребёнка и одновременно держим фокус на измеримом результате.",
-  },
-  {
-    animation: "/lottie/value-team.json",
-    title: "Родитель — часть команды",
-    description: "Без догадок и вечного «как дела?»: прогресс, расписание и следующий шаг видны в кабинете.",
-  },
-  {
-    animation: "/lottie/value-growth.json",
-    title: "Решения принимают данные",
-    description: "Пробные работы меняют маршрут подготовки, если динамика идёт не по плану.",
-  },
+// In the same order as `about.values` in the dictionaries.
+const VALUE_ANIMATIONS = [
+  "/lottie/value-scan.json",
+  "/lottie/value-care.json",
+  "/lottie/value-team.json",
+  "/lottie/value-growth.json",
 ];
 
 export default async function AboutPage() {
-  const [courseCount, studentCount, categoryCount] = await Promise.all([
+  const [courseCount, studentCount, directions, { t }] = await Promise.all([
     prisma.course.count({ where: { published: true } }),
-    prisma.user.count({ where: { role: "STUDENT" } }),
-    prisma.category.count(),
+    prisma.child.count(),
+    prisma.course.groupBy({ by: ["categoryId"], where: { published: true } }),
+    getI18n(),
   ]);
+  const categoryCount = directions.length;
+  const a = t.about;
+  const values = a.values.map((value, index) => ({ ...value, animation: VALUE_ANIMATIONS[index] }));
 
   return (
     <div>
       <section className="px-3 sm:px-5">
         <div className="paper-noise relative mx-auto max-w-[1400px] overflow-hidden rounded-[1.8rem] bg-[#f0b968] px-5 py-20 text-[#0b2233] sm:rounded-[2.4rem] sm:px-10 lg:py-28">
           <AnimeReveal className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.75fr_1.25fr]">
-            <span className="eyebrow !text-[#0b2233]">О центре</span>
+            <span className="eyebrow !text-[#0b2233]">{a.eyebrow}</span>
             <div>
             <h1 className="max-w-4xl font-display text-5xl font-bold leading-[0.98] tracking-[-0.06em] sm:text-7xl">
-              Помогаем ребёнку увидеть: «я могу»
+              {a.title}
             </h1>
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#2f4d63]">
-              Bilim Merkezi соединяет сильного преподавателя, понятный учебный маршрут и прозрачность для родителя. Так подготовка перестаёт быть источником тревоги и становится управляемым процессом.
+              {a.lead}
             </p>
             </div>
           </AnimeReveal>
@@ -59,15 +49,15 @@ export default async function AboutPage() {
           <AnimeReveal delay={0.1} className="mx-auto mt-16 grid max-w-7xl grid-cols-3 border-t border-[#0b2233]/25 pt-8">
             <div className="border-r border-[#0b2233]/20">
               <p className="font-display text-4xl font-bold tracking-[-0.05em]">{courseCount}</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#4d7a94]">программ</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#4d7a94]">{a.programs}</p>
             </div>
             <div className="border-r border-[#0b2233]/20 px-5 sm:px-10">
-              <p className="font-display text-4xl font-bold tracking-[-0.05em]">{studentCount}+</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#4d7a94]">учеников</p>
+              <p className="font-display text-4xl font-bold tracking-[-0.05em]">{studentCount}</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#4d7a94]">{a.students}</p>
             </div>
             <div className="pl-5 sm:pl-10">
               <p className="font-display text-4xl font-bold tracking-[-0.05em]">{categoryCount}</p>
-              <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#4d7a94]">направлений</p>
+              <p className="mt-1 text-xs font-bold uppercase tracking-[0.1em] text-[#4d7a94]">{a.directions}</p>
             </div>
           </AnimeReveal>
         </div>
@@ -75,8 +65,8 @@ export default async function AboutPage() {
 
       <section className="mx-auto max-w-7xl px-4 py-28 sm:px-6 lg:px-8 lg:py-36">
         <AnimeReveal className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-          <span className="eyebrow">Наши принципы</span>
-          <SplitHeading className="section-title text-ink">Что для нас значит хорошая подготовка</SplitHeading>
+          <span className="eyebrow">{a.principles}</span>
+          <SplitHeading className="section-title text-ink">{a.principlesTitle}</SplitHeading>
         </AnimeReveal>
         <div className="mt-14 grid overflow-hidden rounded-[1.6rem] border border-border bg-border sm:grid-cols-2 lg:grid-cols-4">
           {values.map((value, i) => (
