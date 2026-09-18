@@ -2,10 +2,13 @@ import Link from "next/link";
 import { ArrowUpRight, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import type { ChildSummary } from "@/lib/children-data";
 import { ChildAvatar } from "@/components/account/child-avatar";
-import { cn, pluralizeRu } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { getI18n } from "@/lib/i18n/server";
+import { tpl } from "@/lib/i18n/format";
 
 /** Overview card: who the child is, where they stand, and where it is heading. */
-export function ChildCard({ child }: { child: ChildSummary }) {
+export async function ChildCard({ child }: { child: ChildSummary }) {
+  const { t, f } = await getI18n();
   return (
     <Link
       href={`/account/children/${child.id}`}
@@ -22,9 +25,8 @@ export function ChildCard({ child }: { child: ChildSummary }) {
             {child.firstName} {child.lastName}
           </p>
           <p className="text-sm text-muted">
-            {child.grade != null ? `${child.grade} класс · ` : ""}
-            {child.activeCourses}{" "}
-            {pluralizeRu(child.activeCourses, ["курс", "курса", "курсов"])}
+            {child.grade != null ? `${f.grade(child.grade)} · ` : ""}
+            {f.count(child.activeCourses, t.units.course)}
           </p>
         </div>
         <ArrowUpRight
@@ -42,20 +44,20 @@ export function ChildCard({ child }: { child: ChildSummary }) {
               <span className="text-base text-muted">%</span>
             </p>
           </div>
-          <TrendBadge trend={child.trend} />
+          <TrendBadge trend={child.trend} firstLabel={t.account.firstResult} unit={t.format.pp} />
         </div>
       ) : (
         <p className="rounded-xl bg-surface-sunken p-4 text-xs text-muted">
-          Результатов пока нет — они появятся здесь после первого экзамена.
+          {t.account.cardNoResults}
         </p>
       )}
     </Link>
   );
 }
 
-function TrendBadge({ trend }: { trend: number | null }) {
+function TrendBadge({ trend, firstLabel, unit }: { trend: number | null; firstLabel: string; unit: string }) {
   if (trend == null) {
-    return <span className="text-xs text-muted">первый результат</span>;
+    return <span className="text-xs text-muted">{firstLabel}</span>;
   }
 
   const Icon = trend > 0 ? TrendingUp : trend < 0 ? TrendingDown : Minus;
@@ -70,8 +72,7 @@ function TrendBadge({ trend }: { trend: number | null }) {
       )}
     >
       <Icon aria-hidden className="h-3.5 w-3.5" />
-      {trend > 0 ? "+" : ""}
-      {trend} п.п.
+      {tpl(unit, { value: `${trend > 0 ? "+" : ""}${trend}` })}
     </span>
   );
 }
