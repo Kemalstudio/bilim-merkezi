@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { unstable_rethrow } from "next/navigation";
 import { ArrowLeft, Check, Plus, UserRound } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DocumentUpload } from "@/components/courses/document-upload";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 import {
   Dialog,
   DialogContent,
@@ -37,16 +38,22 @@ const NEW_CHILD = "__new__";
 export function EnrollmentDialog({
   courseId,
   label,
+  variant = "primary",
   profiles,
 }: {
   courseId: string;
   label: string;
+  variant?: "primary" | "outline";
   profiles: EnrollableChild[];
 }) {
+  const { t } = useI18n();
+  const e = t.enroll;
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
   const [selected, setSelected] = useState<string>(profiles[0]?.id ?? NEW_CHILD);
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const stepOneRef = useRef<HTMLDivElement>(null);
 
   const isNewChild = selected === NEW_CHILD;
   const selectedChild = profiles.find((child) => child.id === selected);
@@ -55,17 +62,33 @@ export function EnrollmentDialog({
     setOpen(nextOpen);
     if (!nextOpen) {
       setStep(1);
+      setError(null);
       setSelected(profiles[0]?.id ?? NEW_CHILD);
     }
   }
 
+  // Step one's inputs are hidden while step two shows, and the browser cannot point at an
+  // invalid hidden field — so they are checked here, before moving on.
+  function goToStepTwo() {
+    const fields = stepOneRef.current?.querySelectorAll<HTMLInputElement>("input:not([type=radio])") ?? [];
+    for (const field of fields) {
+      if (!field.reportValidity()) return;
+    }
+    setError(null);
+    setStep(2);
+  }
+
   function handleSubmit(formData: FormData) {
+    setError(null);
     startTransition(async () => {
       try {
-        await enrollAction(courseId, formData);
+        const result = await enrollAction(courseId, formData);
+        if (result?.error) setError(result.error);
       } catch (error) {
         unstable_rethrow(error);
-        toast.error(error instanceof Error ? error.message : "Не удалось начать оформление");
+        const message = e.networkError;
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -73,17 +96,15 @@ export function EnrollmentDialog({
   return (
     <Dialog open={open} onOpenChange={reset}>
       <DialogTrigger asChild>
-        <Button size="lg" className="w-full">
+        <Button size="lg" variant={variant} className="w-full">
           {label}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{step === 1 ? "Кого записываем?" : "Документ ребёнка"}</DialogTitle>
+          <DialogTitle>{step === 1 ? e.stepChild : e.stepDocument}</DialogTitle>
           <DialogDescription>
-            {step === 1
-              ? "Выберите ребёнка или добавьте нового — данные сохранятся в вашем кабинете."
-              : "Нужен один документ для подтверждения записи в центре."}
+            {step === 1 ? e.stepChildHint : e.stepDocumentHint}
           </DialogDescription>
         </DialogHeader>
 
@@ -92,7 +113,7 @@ export function EnrollmentDialog({
         <form action={handleSubmit} className="flex flex-col gap-4">
           {/* Step one's fields stay mounted while step two shows, so their values
               survive the transition without a second piece of state. */}
-          <div className={cn("flex flex-col gap-4", step !== 1 && "hidden")}>
+          <div ref={stepOneRef} className={cn("flex flex-col gap-4", step !== 1 && "hidden")}>
             <div className="flex flex-col gap-2">
               {profiles.map((child) => (
                 <ChildOption
@@ -116,7 +137,7 @@ export function EnrollmentDialog({
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-sunken">
                   <Plus aria-hidden className="h-4 w-4" />
                 </span>
-                Добавить ребёнка
+                {e.addChild}
               </button>
             </div>
 
@@ -124,29 +145,35 @@ export function EnrollmentDialog({
               <div className="flex flex-col gap-3 rounded-xl bg-surface-sunken p-4">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="lastName">Фамилия</Label>
-                    <Input id="lastName" name="lastName" required={isNewChild} />
+                    <Label htmlFor="lastName">{e.lastName}</Label>
+                    <Input id="lastName" name="lastName" required={isNewChild} minLength={2} autoComplete="family-name" />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="firstName">Имя</Label>
-                    <Input id="firstName" name="firstName" required={isNewChild} />
+                    <Label htmlFor="firstName">{e.firstName}</Label>
+                    <Input id="firstName" name="firstName" required={isNewChild} minLength={2} autoComplete="given-name" />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="birthDate">Дата рождения</Label>
-                    <Input id="birthDate" name="birthDate" type="date" required={isNewChild} />
+                    <Label htmlFor="birthDate">{e.birthDate}</Label>
+                    <Input
+                      id="birthDate"
+                      name="birthDate"
+                      type="date"
+                      required={isNewChild}
+                      max={new Date().toISOString().slice(0, 10)}
+                    />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="grade">Класс</Label>
+                    <Label htmlFor="grade">{e.grade}</Label>
                     <Input id="grade" name="grade" type="number" min={1} max={12} placeholder="9" />
                   </div>
                 </div>
               </div>
             )}
 
-            <Button type="button" size="lg" className="mt-1 w-full" onClick={() => setStep(2)}>
-              Продолжить
+            <Button type="button" size="lg" className="mt-1 w-full" onClick={goToStepTwo}>
+              {e.continue}
             </Button>
           </div>
 
@@ -156,24 +183,30 @@ export function EnrollmentDialog({
             )}
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="documentNumber">Номер свидетельства о рождении</Label>
+              <Label htmlFor="documentNumber">{e.documentNumber}</Label>
               <Input id="documentNumber" name="documentNumber" required={step === 2} />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label>Скан или фото документа</Label>
+              <Label htmlFor="documentFile-input">{e.documentFile}</Label>
               <DocumentUpload name="documentFile" />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="promoCode">Промокод (если есть)</Label>
+              <Label htmlFor="promoCode">{e.promoCode}</Label>
               <Input
                 id="promoCode"
                 name="promoCode"
-                placeholder="Например, BILIM10"
+                placeholder={e.promoPlaceholder}
                 className="uppercase"
               />
             </div>
+
+            {error && (
+              <p role="alert" className="rounded-xl bg-rose/10 px-4 py-3 text-sm font-medium text-rose">
+                {error}
+              </p>
+            )}
 
             <div className="mt-1 flex gap-3">
               <Button
@@ -183,10 +216,10 @@ export function EnrollmentDialog({
                 onClick={() => setStep(1)}
                 disabled={isPending}
               >
-                <ArrowLeft aria-hidden className="h-4 w-4" /> Назад
+                <ArrowLeft aria-hidden className="h-4 w-4" /> {t.common.back}
               </Button>
               <Button type="submit" size="lg" className="flex-1" disabled={isPending}>
-                {isPending ? "Переходим к оплате..." : "Перейти к оплате"}
+                {isPending ? e.goingToPayment : e.toPayment}
               </Button>
             </div>
           </div>
@@ -205,6 +238,7 @@ function ChildOption({
   checked: boolean;
   onSelect: () => void;
 }) {
+  const { f } = useI18n();
   return (
     <label
       className={cn(
@@ -232,7 +266,7 @@ function ChildOption({
         <span className="block truncate text-sm font-semibold text-ink">
           {child.firstName} {child.lastName}
         </span>
-        {child.grade != null && <span className="block text-xs text-muted">{child.grade} класс</span>}
+        {child.grade != null && <span className="block text-xs text-muted">{f.grade(child.grade)}</span>}
       </span>
       {checked && <Check aria-hidden className="h-4 w-4 shrink-0 text-brand-ink" />}
     </label>
@@ -240,13 +274,14 @@ function ChildOption({
 }
 
 function StepIndicator({ step }: { step: 1 | 2 }) {
+  const { t } = useI18n();
   const steps = [
-    { number: 1 as const, label: "Ребёнок", icon: UserRound },
-    { number: 2 as const, label: "Документ", icon: Check },
+    { number: 1 as const, label: t.enroll.stepChildShort, icon: UserRound },
+    { number: 2 as const, label: t.enroll.stepDocumentShort, icon: Check },
   ];
 
   return (
-    <ol className="flex items-center gap-2" aria-label="Шаги записи">
+    <ol className="flex items-center gap-2" aria-label={t.enroll.stepsLabel}>
       {steps.map((item, index) => {
         const done = step > item.number;
         const active = step === item.number;

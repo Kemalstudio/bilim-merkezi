@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { initials } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 
 export type TestimonialItem = {
   id: string;
@@ -14,6 +15,7 @@ export type TestimonialItem = {
 };
 
 export function TestimonialCarousel({ items }: { items: TestimonialItem[] }) {
+  const { t } = useI18n();
   const trackRef = useRef<HTMLDivElement>(null);
 
   function scrollByCard(direction: 1 | -1) {
@@ -60,7 +62,7 @@ export function TestimonialCarousel({ items }: { items: TestimonialItem[] }) {
           <button
             type="button"
             onClick={() => scrollByCard(-1)}
-            aria-label="Предыдущий отзыв"
+            aria-label={t.common.prevReview}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white transition-colors hover:border-accent hover:bg-accent hover:text-[#0b2233]"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -68,7 +70,7 @@ export function TestimonialCarousel({ items }: { items: TestimonialItem[] }) {
           <button
             type="button"
             onClick={() => scrollByCard(1)}
-            aria-label="Следующий отзыв"
+            aria-label={t.common.nextReview}
             className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/15 bg-white/[0.06] text-white transition-colors hover:border-accent hover:bg-accent hover:text-[#0b2233]"
           >
             <ChevronRight className="h-4 w-4" />

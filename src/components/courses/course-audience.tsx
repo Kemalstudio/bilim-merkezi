@@ -1,10 +1,12 @@
 import { CircleDot, ClipboardCheck, Sparkles } from "lucide-react";
+import { getI18n } from "@/lib/i18n/server";
 
-/** "Для кого курс" and "Что нужно знать заранее", side by side. */
-export function CourseAudience({ audience, requirements }: { audience: string[]; requirements: string[] }) {
+/** Who the course is for and what to know beforehand, side by side. */
+export async function CourseAudience({ audience, requirements }: { audience: string[]; requirements: string[] }) {
+  const { t } = await getI18n();
   const columns = [
-    { title: "Для кого курс", icon: Sparkles, items: audience },
-    { title: "Что нужно знать заранее", icon: ClipboardCheck, items: requirements },
+    { title: t.course.audienceTitle, icon: Sparkles, items: audience },
+    { title: t.course.requirementsTitle, icon: ClipboardCheck, items: requirements },
   ].filter((column) => column.items.length > 0);
   if (columns.length === 0) return null;
 

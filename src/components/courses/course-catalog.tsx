@@ -5,28 +5,18 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { LayoutGrid, Loader2, Search, Table2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn, pluralizeRu } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { AGE_GROUPS, DURATION_GROUPS } from "@/lib/course-levels";
+import { tpl } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n-provider";
 
 const ANY = "any";
 
 export type CategoryOption = { slug: string; name: string; count: number };
 
-const LEVELS = [
-  { value: "", label: "Любой уровень" },
-  { value: "BEGINNER", label: "Начальный" },
-  { value: "INTERMEDIATE", label: "Средний" },
-  { value: "ADVANCED", label: "Продвинутый" },
-];
+const LEVELS = ["", "BEGINNER", "INTERMEDIATE", "ADVANCED"] as const;
 
-export const CATALOG_SORTS = [
-  { value: "popular", label: "Популярные" },
-  { value: "rating", label: "С высоким рейтингом" },
-  { value: "start", label: "Скоро старт" },
-  { value: "price-asc", label: "Сначала дешевле" },
-  { value: "price-desc", label: "Сначала дороже" },
-  { value: "new", label: "Новые" },
-] as const;
+export const CATALOG_SORTS = ["popular", "rating", "start", "price-asc", "price-desc", "new"] as const;
 
 /**
  * Catalogue controls: debounced search, level switch, sort, and category chips with counts.
@@ -41,10 +31,11 @@ export function CourseCatalog({
 }: {
   categories: CategoryOption[];
   resultCount: number;
-  /** Courses matching the search and level in every category, for the "Все" chip. */
+  /** Courses matching the search and level in every category, for the "all" chip. */
   allCount: number;
   children: ReactNode;
 }) {
+  const { t, f } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -90,9 +81,12 @@ export function CourseCatalog({
   }, [query, q, update]);
 
   const categoryName = categories.find((c) => c.slug === category)?.name;
-  const levelName = LEVELS.find((l) => l.value === level && l.value)?.label;
-  const ageName = AGE_GROUPS.find((group) => group.value === age)?.label;
-  const durationName = DURATION_GROUPS.find((group) => group.value === duration)?.label;
+  const levelName = level ? f.level(level) : undefined;
+  const ageGroup = AGE_GROUPS.find((group) => group.value === age);
+  const ageName = ageGroup && tpl(t.catalog.ageGroup, { min: ageGroup.min, max: ageGroup.max });
+  const durationName = DURATION_GROUPS.some((group) => group.value === duration)
+    ? t.catalog.durations[duration as keyof typeof t.catalog.durations]
+    : undefined;
   const activeFilters = [
     q && { key: "q", label: `«${q}»` },
     categoryName && { key: "category", label: categoryName },
@@ -114,8 +108,8 @@ export function CourseCatalog({
               onKeyDown={(e) => {
                 if (e.key === "Enter") update({ q: query.trim() || null });
               }}
-              placeholder="Курс, тема урока или преподаватель"
-              aria-label="Поиск курсов"
+              placeholder={t.catalog.searchPlaceholder}
+              aria-label={t.catalog.searchLabel}
               className="pl-11 pr-10 [&::-webkit-search-cancel-button]:hidden"
             />
             {query && (
@@ -125,71 +119,71 @@ export function CourseCatalog({
                   setQuery("");
                   update({ q: null });
                 }}
-                aria-label="Очистить поиск"
+                aria-label={t.catalog.clearSearch}
                 className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-sunken hover:text-ink"
               >
-                <X className="h-4 w-4" />
+                <X aria-hidden className="h-4 w-4" />
               </button>
             )}
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-            <div role="group" aria-label="Уровень" className="flex rounded-xl bg-surface-sunken p-1">
+            <div role="group" aria-label={t.catalog.levelGroup} className="flex rounded-xl bg-surface-sunken p-1">
               {LEVELS.map((option) => {
-                const selected = level === option.value;
+                const selected = level === option;
                 return (
                   <button
-                    key={option.value || "all"}
+                    key={option || "all"}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => update({ level: option.value || null })}
+                    onClick={() => update({ level: option || null })}
                     className={cn(
                       "flex-1 cursor-pointer whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 active:scale-95",
                       selected ? "bg-surface text-ink shadow-glow-sm" : "text-muted hover:text-ink"
                     )}
                   >
-                    {option.value ? option.label : "Все"}
+                    {option ? f.level(option) : t.common.all}
                   </button>
                 );
               })}
             </div>
 
             <Select value={age || ANY} onValueChange={(value) => update({ age: value === ANY ? null : value })}>
-              <SelectTrigger className="whitespace-nowrap sm:w-44" aria-label="Возраст ребёнка">
+              <SelectTrigger className="whitespace-nowrap sm:w-44" aria-label={t.catalog.ageLabel}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Любой возраст</SelectItem>
+                <SelectItem value={ANY}>{t.catalog.anyAge}</SelectItem>
                 {AGE_GROUPS.map((group) => (
                   <SelectItem key={group.value} value={group.value}>
-                    {group.label}
+                    {tpl(t.catalog.ageGroup, { min: group.min, max: group.max })}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
             <Select value={duration || ANY} onValueChange={(value) => update({ duration: value === ANY ? null : value })}>
-              <SelectTrigger className="whitespace-nowrap sm:w-52" aria-label="Длительность курса">
+              <SelectTrigger className="whitespace-nowrap sm:w-52" aria-label={t.catalog.durationLabel}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ANY}>Любая длительность</SelectItem>
+                <SelectItem value={ANY}>{t.catalog.anyDuration}</SelectItem>
                 {DURATION_GROUPS.map((group) => (
                   <SelectItem key={group.value} value={group.value}>
-                    {group.label} учёбы
+                    {tpl(t.catalog.durationSuffix, { label: t.catalog.durations[group.value] })}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
             <Select value={sort} onValueChange={(value) => update({ sort: value === "popular" ? null : value })}>
-              <SelectTrigger className="sm:w-48" aria-label="Сортировка">
+              <SelectTrigger className="sm:w-48" aria-label={t.catalog.sortLabel}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {CATALOG_SORTS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
+                  <SelectItem key={option} value={option}>
+                    {t.catalog.sorts[option]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -197,8 +191,8 @@ export function CourseCatalog({
           </div>
         </div>
 
-        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label="Категории">
-          {[{ slug: "", name: "Все направления", count: allCount }, ...categories].map((option) => {
+        <div className="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1" role="group" aria-label={t.catalog.categoriesLabel}>
+          {[{ slug: "", name: t.catalog.allCategories, count: allCount }, ...categories].map((option) => {
             const selected = category === option.slug;
             const empty = option.count === 0 && !selected;
             return (
@@ -233,7 +227,7 @@ export function CourseCatalog({
       <div className="mt-6 flex flex-wrap items-center gap-2" aria-live="polite">
         <p className="mr-2 flex items-center gap-2 text-sm font-semibold text-ink">
           {isPending && <Loader2 aria-hidden className="h-4 w-4 animate-spin text-brand" />}
-          Найдено {resultCount} {pluralizeRu(resultCount, ["курс", "курса", "курсов"])}
+          {tpl(t.catalog.found, { count: f.count(resultCount, t.units.course) })}
         </p>
         {activeFilters.map((filter) => (
           <button
@@ -247,7 +241,7 @@ export function CourseCatalog({
           >
             {filter.label}
             <X aria-hidden className="h-3 w-3 transition-transform group-hover:rotate-90" />
-            <span className="sr-only">— убрать фильтр</span>
+            <span className="sr-only">{t.catalog.removeFilter}</span>
           </button>
         ))}
         {activeFilters.length > 1 && (
@@ -259,13 +253,13 @@ export function CourseCatalog({
             }}
             className="cursor-pointer text-xs font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
           >
-            Сбросить всё
+            {t.catalog.resetAll}
           </button>
         )}
-        <div role="group" aria-label="Вид каталога" className="ml-auto flex rounded-xl bg-surface-sunken p-1">
+        <div role="group" aria-label={t.catalog.viewLabel} className="ml-auto flex rounded-xl bg-surface-sunken p-1">
           {[
-            { value: "grid", label: "Карточки", icon: LayoutGrid },
-            { value: "table", label: "Таблица", icon: Table2 },
+            { value: "grid", label: t.catalog.viewCards, icon: LayoutGrid },
+            { value: "table", label: t.catalog.viewTable, icon: Table2 },
           ].map(({ value, label, icon: Icon }) => (
             <button
               key={value}

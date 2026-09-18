@@ -7,7 +7,7 @@ import { locales, type Locale } from "@/lib/i18n/config";
  * while nothing is saved. No database access here, so client components can import it.
  */
 
-export type SettingKey = "sections" | "animations" | "contacts" | "languages" | "heroReport";
+export type SettingKey = "sections" | "animations" | "contacts" | "languages" | "heroReport" | "assistant";
 
 /** Text edits are stored per language, one row each. */
 export const textsKey = (locale: Locale) => `texts.${locale}` as const;
@@ -128,6 +128,17 @@ export const DEFAULT_ANIMATIONS: AnimationSettings = {
   scrollReveals: true,
   cursor: true,
 };
+
+/* ── AI assistant ──────────────────────────────────────────────────────────────────── */
+
+export const assistantSchema = z.object({
+  /** The chat widget on public pages and the progress summaries in the parent account. */
+  enabled: z.boolean(),
+});
+
+export type AssistantSettings = z.infer<typeof assistantSchema>;
+
+export const DEFAULT_ASSISTANT: AssistantSettings = { enabled: true };
 
 /* ── Contacts ────────────────────────────────────────────────────────────────────────── */
 

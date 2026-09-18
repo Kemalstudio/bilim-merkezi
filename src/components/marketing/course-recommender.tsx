@@ -23,7 +23,7 @@ type RecommenderLabels = {
 // Index of the "interest" question (question 2) options maps 1:1 to real category slugs,
 // kept in the same order across every locale dictionary.
 const INTEREST_QUESTION_INDEX = 1;
-const INTEREST_SLUGS = ["programming", "design", "languages", "marketing"];
+const INTEREST_SLUGS = ["programming", "creative", "languages", "math"];
 
 export function CourseRecommender({ labels }: { labels: RecommenderLabels }) {
   const [step, setStep] = useState(0);

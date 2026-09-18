@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { tpl } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n-provider";
 
 export function StarRatingInput({ name, defaultValue = 5 }: { name: string; defaultValue?: number }) {
+  const { t } = useI18n();
   const [rating, setRating] = useState(defaultValue);
   const [hovered, setHovered] = useState<number | null>(null);
 
@@ -18,14 +21,13 @@ export function StarRatingInput({ name, defaultValue = 5 }: { name: string; defa
           onClick={() => setRating(value)}
           onMouseEnter={() => setHovered(value)}
           onMouseLeave={() => setHovered(null)}
-          className="cursor-pointer p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-start rounded"
-          aria-label={`Оценка ${value} из 5`}
+          aria-pressed={rating === value}
+          className="cursor-pointer rounded p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-start"
+          aria-label={tpl(t.reviews.ratingN, { n: value })}
         >
           <Star
-            className={cn(
-              "h-6 w-6 transition-colors",
-              (hovered ?? rating) >= value ? "fill-amber text-amber" : "text-border"
-            )}
+            aria-hidden
+            className={cn("h-6 w-6 transition-colors", (hovered ?? rating) >= value ? "fill-amber text-amber" : "text-border")}
           />
         </button>
       ))}

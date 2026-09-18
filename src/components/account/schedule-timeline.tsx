@@ -1,23 +1,21 @@
 import { CalendarDays, Clock, MapPin } from "lucide-react";
 import type { ScheduleItem } from "@/lib/children-data";
-
-const dayFormatter = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" });
-const timeFormatter = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" });
-const weekdayFormatter = new Intl.DateTimeFormat("ru-RU", { weekday: "short" });
+import { getI18n } from "@/lib/i18n/server";
 
 /** Upcoming lessons, newest first, with the child's name when it is shared. */
-export function ScheduleTimeline({
+export async function ScheduleTimeline({
   items,
   showChildName = false,
 }: {
   items: ScheduleItem[];
   showChildName?: boolean;
 }) {
+  const { t, f } = await getI18n();
   if (items.length === 0) {
     return (
       <div className="flex items-center gap-3 rounded-2xl border border-dashed border-border p-5 text-sm text-muted">
         <CalendarDays aria-hidden className="h-4 w-4 shrink-0" />
-        Ближайших занятий пока нет — расписание появится после подтверждения записи.
+        {t.account.noUpcoming}
       </div>
     );
   }
@@ -33,10 +31,10 @@ export function ScheduleTimeline({
           >
             <div className="flex w-14 shrink-0 flex-col items-center rounded-xl bg-surface-sunken py-2">
               <span className="font-display text-sm font-bold text-ink">
-                {dayFormatter.format(start)}
+                {f.shortDate(start)}
               </span>
               <span className="text-[11px] uppercase text-muted">
-                {weekdayFormatter.format(start)}
+                {f.weekday(start)}
               </span>
             </div>
 
@@ -51,7 +49,7 @@ export function ScheduleTimeline({
             <div className="flex shrink-0 flex-col items-end gap-1 text-xs text-muted">
               <span className="inline-flex items-center gap-1">
                 <Clock aria-hidden className="h-3 w-3" />
-                <time dateTime={item.startsAt}>{timeFormatter.format(start)}</time>
+                <time dateTime={item.startsAt}>{f.time(start)}</time>
               </span>
               {item.location && (
                 <span className="inline-flex items-center gap-1">

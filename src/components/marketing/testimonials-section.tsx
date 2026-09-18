@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getI18n } from "@/lib/i18n/server";
 import { AnimeReveal } from "@/components/shared/anime-reveal";
 import { SplitHeading } from "@/components/shared/split-heading";
 import { TestimonialReveal } from "@/components/marketing/testimonial-reveal";
@@ -8,18 +9,19 @@ export async function TestimonialsSection({ labels }: { labels: Dictionary["test
   // Each review is shown as a large scroll-revealed quote, so a handful reads best.
   const reviews = await prisma.review.findMany({
     where: { rating: { gte: 4 }, comment: { not: null } },
-    include: { user: true, course: { select: { title: true } } },
+    include: { user: { select: { name: true } }, course: { select: { title: true } } },
     orderBy: { createdAt: "desc" },
     take: 4,
   });
 
   if (reviews.length === 0) return null;
+  const { t } = await getI18n();
 
   const items = reviews.map((review) => ({
     id: review.id,
     rating: review.rating,
     comment: review.comment ?? "",
-    userName: review.user.name ?? "Студент",
+    userName: review.user.name ?? t.common.parent,
     courseTitle: review.course.title,
   }));
 

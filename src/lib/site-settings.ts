@@ -6,6 +6,8 @@ import { prisma } from "@/lib/prisma";
 import type { Locale } from "@/lib/i18n/config";
 import {
   DEFAULT_ANIMATIONS,
+  DEFAULT_ASSISTANT,
+  assistantSchema,
   DEFAULT_CONTACTS,
   DEFAULT_HERO_REPORT,
   DEFAULT_LANGUAGES,
@@ -49,6 +51,8 @@ export const getAnimations = cache(async () => ({
   ...DEFAULT_ANIMATIONS,
   ...(await readSetting("animations", animationsSchema.partial(), {})),
 }));
+
+export const getAssistantSettings = cache(() => readSetting("assistant", assistantSchema, DEFAULT_ASSISTANT));
 
 export const getContacts = cache(() => readSetting("contacts", contactsSchema, DEFAULT_CONTACTS));
 

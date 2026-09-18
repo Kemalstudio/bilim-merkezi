@@ -27,6 +27,7 @@ type NavLabels = {
   admin: string;
   logout: string;
   menu: string;
+  theme: string;
 };
 
 export function MobileNav({ user, labels }: { user: SessionUser; labels: NavLabels }) {
@@ -44,7 +45,7 @@ export function MobileNav({ user, labels }: { user: SessionUser; labels: NavLabe
         <SheetTitle>{labels.menu}</SheetTitle>
         <NavLinks labels={labels} className="flex-col items-start gap-1" onNavigate={() => setOpen(false)} />
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted">Тема</span>
+          <span className="text-sm text-muted">{labels.theme}</span>
           <ThemeToggle />
         </div>
         <Separator />

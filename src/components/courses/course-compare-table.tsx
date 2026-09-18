@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
 import type { CourseCardData } from "@/components/courses/course-card";
-import { getLevelLabel } from "@/lib/course-visuals";
-import { ageRangeLabel } from "@/lib/course-levels";
-import { formatCurrency, formatShortDate } from "@/lib/utils";
+import { getI18n } from "@/lib/i18n/server";
+import { tpl } from "@/lib/i18n/format";
 
 export type CompareRow = CourseCardData & { lessons: number };
 
@@ -11,30 +10,31 @@ export type CompareRow = CourseCardData & { lessons: number };
  * The catalogue as one table: every course with its age, level, length, hours and price side by
  * side, so parents can compare programmes without opening each one.
  */
-export function CourseCompareTable({ courses }: { courses: CompareRow[] }) {
+export async function CourseCompareTable({ courses }: { courses: CompareRow[] }) {
+  const { t, f } = await getI18n();
+  const c = t.compare;
+
   return (
     <div className="overflow-x-auto rounded-[1.4rem] border border-border bg-surface">
       <table className="w-full min-w-[860px] text-sm">
-        <caption className="sr-only">Сравнение курсов: возраст, уровень, длительность, часы и цена</caption>
+        <caption className="sr-only">{c.caption}</caption>
         <thead className="bg-surface-sunken text-left text-[0.68rem] font-bold uppercase tracking-[0.1em] text-muted">
           <tr>
-            <th scope="col" className="px-4 py-3">Курс</th>
-            <th scope="col" className="px-3 py-3">Возраст</th>
-            <th scope="col" className="px-3 py-3">Уровень</th>
-            <th scope="col" className="px-3 py-3 text-right">Недель</th>
-            <th scope="col" className="px-3 py-3 text-right">Уроков</th>
-            <th scope="col" className="px-3 py-3">В неделю</th>
-            <th scope="col" className="px-3 py-3 text-right">Всего часов</th>
-            <th scope="col" className="px-3 py-3">Старт</th>
-            <th scope="col" className="px-4 py-3 text-right">Цена</th>
+            <th scope="col" className="px-4 py-3">{c.course}</th>
+            <th scope="col" className="px-3 py-3">{c.age}</th>
+            <th scope="col" className="px-3 py-3">{c.level}</th>
+            <th scope="col" className="px-3 py-3 text-right">{c.weeks}</th>
+            <th scope="col" className="px-3 py-3 text-right">{c.lessons}</th>
+            <th scope="col" className="px-3 py-3">{c.perWeek}</th>
+            <th scope="col" className="px-3 py-3 text-right">{c.totalHours}</th>
+            <th scope="col" className="px-3 py-3">{c.start}</th>
+            <th scope="col" className="px-4 py-3 text-right">{c.price}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
           {courses.map((course) => {
             const finalPrice = Number(course.discountPrice ?? course.price);
             const hasDiscount = course.discountPrice != null && finalPrice < Number(course.price);
-            const weekly =
-              course.weeklyHoursMin === course.weeklyHoursMax ? `${course.weeklyHoursMax}` : `${course.weeklyHoursMin}–${course.weeklyHoursMax}`;
             return (
               <tr key={course.slug} className="transition-colors hover:bg-surface-sunken/50">
                 <th scope="row" className="max-w-[20rem] px-4 py-3 text-left font-normal">
@@ -51,26 +51,29 @@ export function CourseCompareTable({ courses }: { courses: CompareRow[] }) {
                     )}
                   </span>
                 </th>
-                <td className="whitespace-nowrap px-3 py-3 text-ink-soft">{ageRangeLabel(course.ageMin, course.ageMax) ?? "—"}</td>
+                <td className="whitespace-nowrap px-3 py-3 text-ink-soft">{f.ageRange(course.ageMin, course.ageMax) ?? "—"}</td>
                 <td className="whitespace-nowrap px-3 py-3 text-ink-soft">
-                  {getLevelLabel(course.level)}
+                  {f.level(course.level)}
                   {course.levelCode && <span className="text-muted"> · {course.levelCode}</span>}
                 </td>
                 <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{course.weeks || "—"}</td>
                 <td className="px-3 py-3 text-right tabular-nums text-ink-soft">{course.lessons || "—"}</td>
                 <td className="whitespace-nowrap px-3 py-3 text-ink-soft">
-                  {course.lessonsPerWeek} ур. · {weekly} ч
+                  {tpl(c.perWeekValue, {
+                    lessons: course.lessonsPerWeek,
+                    hours: f.range(course.weeklyHoursMin, course.weeklyHoursMax),
+                  })}
                 </td>
                 <td className="whitespace-nowrap px-3 py-3 text-right font-bold tabular-nums text-ink">
                   {course.weeks > 0
-                    ? `${course.weeks * course.weeklyHoursMin}–${course.weeks * course.weeklyHoursMax}`
+                    ? f.range(course.weeks * course.weeklyHoursMin, course.weeks * course.weeklyHoursMax)
                     : course.durationHours}{" "}
-                  ч
+                  {t.units.hourShort}
                 </td>
-                <td className="whitespace-nowrap px-3 py-3 text-ink-soft">{course.startDate ? formatShortDate(course.startDate) : "—"}</td>
+                <td className="whitespace-nowrap px-3 py-3 text-ink-soft">{course.startDate ? f.shortDate(course.startDate) : "—"}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-right">
-                  {hasDiscount && <span className="mr-1.5 text-xs text-muted line-through">{formatCurrency(course.price)}</span>}
-                  <span className="font-display font-bold text-ink">{formatCurrency(finalPrice)}</span>
+                  {hasDiscount && <span className="mr-1.5 text-xs text-muted line-through">{f.currency(course.price)}</span>}
+                  <span className="font-display font-bold text-ink">{f.currency(finalPrice)}</span>
                 </td>
               </tr>
             );

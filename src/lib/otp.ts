@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import type { OtpPurpose } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/sms";
+import { tpl } from "@/lib/i18n/format";
 import { OTP_LENGTH, OTP_TTL_MS, OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/otp-constants";
 
 export { OTP_LENGTH, OTP_TTL_MS };
@@ -22,12 +23,13 @@ function generateCode(): string {
 }
 
 /**
- * Issues a one-time code for `phone` and sends it by SMS.
+ * Issues a one-time code for `phone` and sends it by SMS; `messageTemplate` is the SMS text in
+ * the visitor's language with `{code}` and `{minutes}` placeholders.
  *
  * Any code still outstanding for the same number and purpose is consumed first,
  * so only the newest code can ever be redeemed.
  */
-export async function issueOtp(phone: string, purpose: OtpPurpose): Promise<IssueResult> {
+export async function issueOtp(phone: string, purpose: OtpPurpose, messageTemplate: string): Promise<IssueResult> {
   const now = new Date();
 
   const recent = await prisma.phoneOtp.findFirst({
@@ -60,7 +62,7 @@ export async function issueOtp(phone: string, purpose: OtpPurpose): Promise<Issu
 
   await sendSms({
     to: phone,
-    text: `Bilim Merkezi: код подтверждения ${code}. Действует ${OTP_TTL_MS / 60_000} минут. Никому его не сообщайте.`,
+    text: tpl(messageTemplate, { code, minutes: OTP_TTL_MS / 60_000 }),
   });
 
   return { ok: true, expiresAt };

@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { PhoneField } from "@/components/auth/phone-field";
 import { OtpInput } from "@/components/auth/otp-input";
 import { OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/otp-constants";
+import { tpl } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n-provider";
 
 type SentCode = { phone: string; maskedPhone: string };
 
@@ -19,6 +21,7 @@ type SentCode = { phone: string; maskedPhone: string };
  * costs one tap to fix.
  */
 export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
+  const { t } = useI18n();
   const [sent, setSent] = useState<SentCode | null>(null);
   const [editingNumber, setEditingNumber] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -38,17 +41,15 @@ export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
     startRequest(async () => {
       const result = await requestOtpAction(undefined, formData);
       if (!result || result.status !== "sent") {
-        toast.error(
-          result?.status === "error" ? result.error : "Не удалось отправить код"
-        );
+        toast.error(result?.status === "error" ? result.error : t.auth.sendFailed);
         return;
       }
       setSent({ phone: result.phone, maskedPhone: result.maskedPhone });
       setEditingNumber(false);
       setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
-      toast.success(`Код отправлен на ${result.maskedPhone}`);
+      toast.success(tpl(t.auth.codeSent, { phone: result.maskedPhone }));
       if (result.simulated) {
-        toast.info("SMS-шлюз не подключён — код напечатан в консоли сервера.", {
+        toast.info(t.auth.simulated, {
           duration: 8000,
         });
       }
@@ -67,9 +68,9 @@ export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
     return (
       <form action={requestCode} className="flex flex-col gap-4">
         <PhoneField autoFocus disabled={isRequesting} defaultValue={sent?.phone ?? ""} />
-        <p className="text-xs text-muted">Отправим SMS с кодом подтверждения. Пароль не нужен.</p>
+        <p className="text-xs text-muted">{t.auth.sendCodeHint}</p>
         <Button type="submit" disabled={isRequesting} className="mt-1">
-          {isRequesting ? "Отправляем код..." : "Получить код"}
+          {isRequesting ? t.auth.sendingCode : t.auth.getCode}
         </Button>
       </form>
     );
@@ -80,8 +81,7 @@ export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
       <div className="flex items-start gap-3 rounded-xl bg-surface-sunken p-3">
         <ShieldCheck aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald" />
         <p className="text-xs text-ink-soft">
-          Код отправлен на <span className="font-semibold text-ink">{sent.maskedPhone}</span>. Он
-          действует 5 минут.
+          {tpl(t.auth.codeSentTo, { phone: sent.maskedPhone })}
         </p>
       </div>
 
@@ -89,27 +89,28 @@ export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
         <input type="hidden" name="phone" value={sent.phone} />
         {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
 
+        {/* The name comes first: a complete code submits the form on its own. */}
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="code">Код из SMS</Label>
+          <Label htmlFor="name">{t.auth.nameQuestion}</Label>
+          <Input
+            id="name"
+            name="name"
+            autoComplete="name"
+            placeholder={t.auth.nameOnlyNew}
+            disabled={isVerifying}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="code">{t.auth.code}</Label>
           <OtpInput
             disabled={isVerifying}
             onComplete={() => verifyFormRef.current?.requestSubmit()}
           />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="name">Как вас зовут?</Label>
-          <Input
-            id="name"
-            name="name"
-            autoComplete="name"
-            placeholder="Только для нового аккаунта"
-            disabled={isVerifying}
-          />
-        </div>
-
         <Button type="submit" disabled={isVerifying}>
-          {isVerifying ? "Проверяем код..." : "Войти"}
+          {isVerifying ? t.auth.checking : t.auth.signIn}
         </Button>
       </form>
 
@@ -121,7 +122,7 @@ export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
             disabled={cooldown > 0 || isRequesting}
             className="font-semibold text-brand-ink transition-colors hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
           >
-            {cooldown > 0 ? `Отправить код повторно через ${cooldown} с` : "Отправить код повторно"}
+            {cooldown > 0 ? tpl(t.auth.resendIn, { seconds: cooldown }) : t.auth.resend}
           </button>
         </form>
         <button
@@ -129,7 +130,7 @@ export function PhoneLoginForm({ callbackUrl }: { callbackUrl?: string }) {
           onClick={() => setEditingNumber(true)}
           className="inline-flex items-center gap-1 text-muted transition-colors hover:text-ink"
         >
-          <ArrowLeft aria-hidden className="h-3 w-3" /> Другой номер
+          <ArrowLeft aria-hidden className="h-3 w-3" /> {t.auth.otherNumber}
         </button>
       </div>
     </div>

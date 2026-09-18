@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { OTP_LENGTH } from "@/lib/otp-constants";
+import { tpl } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n-provider";
 
 /**
  * Segmented code field. Renders one box per digit for legibility, but keeps a
@@ -21,6 +23,7 @@ export function OtpInput({
   disabled?: boolean;
   autoFocus?: boolean;
 }) {
+  const { t } = useI18n();
   const [digits, setDigits] = useState<string[]>(() => Array(OTP_LENGTH).fill(""));
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const code = digits.join("");
@@ -77,7 +80,7 @@ export function OtpInput({
   return (
     <div className="flex flex-col gap-2">
       <input type="hidden" name={name} value={code} />
-      <div className="flex justify-between gap-2" role="group" aria-label="Код из SMS">
+      <div className="flex justify-between gap-2" role="group" aria-label={t.auth.code}>
         {digits.map((digit, index) => (
           <input
             key={index}
@@ -88,7 +91,8 @@ export function OtpInput({
             disabled={disabled}
             inputMode="numeric"
             autoComplete={index === 0 ? "one-time-code" : "off"}
-            aria-label={`Цифра ${index + 1} из ${OTP_LENGTH}`}
+            id={index === 0 ? name : undefined}
+            aria-label={tpl(t.auth.codeDigit, { n: index + 1, total: OTP_LENGTH })}
             maxLength={OTP_LENGTH}
             onChange={(event) => write(index, event.target.value)}
             onKeyDown={(event) => handleKeyDown(index, event)}

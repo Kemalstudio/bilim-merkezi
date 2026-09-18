@@ -5,11 +5,13 @@ import Google from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { loginSchema } from "@/lib/validations/auth";
+import { credentialsSchema } from "@/lib/validations/auth";
 import { verifyOtpSchema } from "@/lib/validations/phone-auth";
 import { verifyOtp } from "@/lib/otp";
-import { formatPhone } from "@/lib/phone";
+import { formatPhone, placeholderEmail } from "@/lib/phone";
 import { isGoogleAuthEnabled } from "@/lib/env";
+
+const ROLE_RECHECK_MS = 5 * 60_000;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
@@ -53,7 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               name: name ?? formatPhone(phone),
               // Auth.js requires a unique email; phone-only accounts get a
               // placeholder they can replace from account settings.
-              email: `${phone}@phone.bilim.local`,
+              email: placeholderEmail(phone),
             },
           }));
 
@@ -68,16 +70,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
     Credentials({
       credentials: {
-        email: { label: "Email", type: "email" },
+        login: { label: "Email или телефон", type: "text" },
         password: { label: "Пароль", type: "password" },
       },
       authorize: async (credentials) => {
-        const parsed = loginSchema.safeParse(credentials);
+        const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: parsed.data.email },
-        });
+        const user = await prisma.user.findUnique({ where: parsed.data.login });
         if (!user?.passwordHash) return null;
 
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
@@ -118,8 +118,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return true;
     },
     async jwt({ token, user }) {
+      const now = Date.now();
       if (user) {
         token.role = user.role;
+        token.roleCheckedAt = now;
+        return token;
+      }
+      // The role lives in a long-lived token, so it is re-read now and then: a demoted
+      // moderator loses the admin panel within minutes, and a deleted account is signed out.
+      const checkedAt = typeof token.roleCheckedAt === "number" ? token.roleCheckedAt : 0;
+      if (now - checkedAt > ROLE_RECHECK_MS) {
+        if (!token.sub) return null;
+        const current = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true } });
+        if (!current) return null;
+        token.role = current.role;
+        token.roleCheckedAt = now;
       }
       return token;
     },

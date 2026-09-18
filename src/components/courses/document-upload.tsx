@@ -4,8 +4,10 @@ import { useState, useTransition } from "react";
 import { FileCheck2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 
 export function DocumentUpload({ name }: { name: string }) {
+  const { t } = useI18n();
   const [key, setKey] = useState("");
   const [fileName, setFileName] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -21,11 +23,11 @@ export function DocumentUpload({ name }: { name: string }) {
       try {
         const res = await fetch("/api/uploads/enrollment-document", { method: "POST", body: formData });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Ошибка загрузки");
+        if (!res.ok) throw new Error(data.error ?? t.enroll.uploadFailed);
         setKey(data.key);
         setFileName(file.name);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Не удалось загрузить файл");
+        toast.error(error instanceof Error ? error.message : t.enroll.uploadFailed);
       }
     });
   }
@@ -49,19 +51,21 @@ export function DocumentUpload({ name }: { name: string }) {
                 setKey("");
                 setFileName("");
               }}
+              aria-label={t.enroll.removeFile}
               className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-border hover:text-ink"
             >
-              <X className="h-4 w-4" />
+              <X aria-hidden className="h-4 w-4" />
             </button>
           </>
         ) : (
-          <label className="flex w-full cursor-pointer items-center gap-3 text-muted">
+          <label className="flex w-full cursor-pointer items-center gap-3 text-muted focus-within:text-ink">
             <Upload className="h-5 w-5 shrink-0" />
-            <span className="text-sm">{isPending ? "Загрузка..." : "Загрузить скан или фото документа (PDF, JPG, PNG)"}</span>
+            <span className="text-sm">{isPending ? t.enroll.uploading : t.enroll.upload}</span>
             <input
+              id={`${name}-input`}
               type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              className="sr-only"
               onChange={handleChange}
               disabled={isPending}
             />
@@ -69,7 +73,7 @@ export function DocumentUpload({ name }: { name: string }) {
         )}
       </div>
       <p className="mt-1.5 text-xs text-muted">
-        Документ виден только вам и администрации центра — используется для подтверждения записи.
+        {t.enroll.uploadHint}
       </p>
     </div>
   );

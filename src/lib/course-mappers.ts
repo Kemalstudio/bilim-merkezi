@@ -30,5 +30,8 @@ export function toCourseCardData(course: CourseWithRelations): CourseCardData {
     lessonsPerWeek: course.lessonsPerWeek,
     weeklyHoursMin: course.weeklyHoursMin,
     weeklyHoursMax: course.weeklyHoursMax,
+    ageMin: course.ageMin,
+    ageMax: course.ageMax,
+    levelCode: course.levelCode,
   };
 }

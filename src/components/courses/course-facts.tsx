@@ -1,13 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import { Award, CalendarRange, Clock, Globe, Repeat, Signal, UserRound, Users } from "lucide-react";
-import { getLevelLabel } from "@/lib/course-visuals";
-import { ageRangeLabel } from "@/lib/course-levels";
-import { lessonsPerWeekLabel, totalHoursLabel, weeklyHoursLabel, weeksLabel, type CourseFormat } from "@/lib/course-schedule";
+import { getI18n } from "@/lib/i18n/server";
+import { tpl, type CourseFormatLike } from "@/lib/i18n/format";
 
 type Fact = { icon: LucideIcon; label: string; value: string; hint?: string };
 
-/** "Детали курса": the practical answers a parent looks for before enrolling, in one grid. */
-export function CourseFacts({
+/** Course details: the practical answers a parent looks for before enrolling, in one grid. */
+export async function CourseFacts({
   course,
   format,
   weeks,
@@ -21,36 +20,47 @@ export function CourseFacts({
     teachingLanguage: string | null;
     certificate: boolean;
   };
-  format: CourseFormat;
+  format: CourseFormatLike;
   weeks: number;
 }) {
-  const age = ageRangeLabel(course.ageMin, course.ageMax);
+  const { t, f } = await getI18n();
+  const labels = t.course.facts;
+  const age = f.ageRange(course.ageMin, course.ageMax);
   const facts: Fact[] = [
-    ...(age ? [{ icon: UserRound, label: "Возраст", value: age }] : []),
+    ...(age ? [{ icon: UserRound, label: labels.age, value: age }] : []),
     {
       icon: Signal,
-      label: "Уровень",
-      value: course.levelCode ? `${getLevelLabel(course.level)} · ${course.levelCode}` : getLevelLabel(course.level),
+      label: labels.level,
+      value: course.levelCode ? `${f.level(course.level)} · ${course.levelCode}` : f.level(course.level),
     },
     ...(weeks > 0
-      ? [{ icon: CalendarRange, label: "Длительность", value: weeksLabel(weeks), hint: `${totalHoursLabel(weeks, format)} учёбы` }]
+      ? [
+          {
+            icon: CalendarRange,
+            label: labels.duration,
+            value: f.weeks(weeks),
+            hint: tpl(labels.durationHint, { hours: f.totalHours(weeks, format) }),
+          },
+        ]
       : []),
-    { icon: Repeat, label: "Расписание", value: lessonsPerWeekLabel(format.lessonsPerWeek), hint: "занятия в группе с преподавателем" },
-    { icon: Clock, label: "Нагрузка", value: weeklyHoursLabel(format), hint: "уроки, практика и домашние задания" },
-    ...(course.groupSize ? [{ icon: Users, label: "Группа", value: `до ${course.groupSize} учеников` }] : []),
-    ...(course.teachingLanguage ? [{ icon: Globe, label: "Язык обучения", value: course.teachingLanguage }] : []),
+    { icon: Repeat, label: labels.schedule, value: f.lessonsPerWeek(format.lessonsPerWeek), hint: labels.scheduleHint },
+    { icon: Clock, label: labels.load, value: f.weeklyHours(format), hint: labels.loadHint },
+    ...(course.groupSize
+      ? [{ icon: Users, label: labels.group, value: tpl(labels.groupValue, { size: course.groupSize }) }]
+      : []),
+    ...(course.teachingLanguage ? [{ icon: Globe, label: labels.language, value: course.teachingLanguage }] : []),
     {
       icon: Award,
-      label: "Итог",
-      value: course.certificate ? "Сертификат центра" : "Итоговое занятие",
-      hint: course.certificate ? "после итогового теста" : "без сертификата",
+      label: labels.result,
+      value: course.certificate ? labels.certificate : labels.finalLesson,
+      hint: course.certificate ? labels.certificateHint : labels.noCertificate,
     },
   ];
 
   return (
     <section aria-labelledby="facts-title">
       <h2 id="facts-title" className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">
-        Детали курса
+        {t.course.factsTitle}
       </h2>
       <dl className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {facts.map(({ icon: Icon, label, value, hint }) => (

@@ -13,6 +13,7 @@ import { ImageUpload } from "@/components/admin/image-upload";
 import type { CourseActionState } from "@/actions/admin-courses";
 import { cn, pluralizeRu } from "@/lib/utils";
 import { DEFAULT_COURSE_FORMAT, formatMinutes, totalHoursLabel, weeksLabel } from "@/lib/course-schedule";
+import { LANGUAGE_LADDER, TRACK_NAMES } from "@/lib/course-levels";
 
 type LessonDraft = { key: string; title: string; durationMin: number; topicsText: string };
 type WeekDraft = { key: string; title: string; goal: string; lessons: LessonDraft[] };
@@ -35,8 +36,26 @@ export type CourseFormValues = {
   coverImage?: string | null;
   published: boolean;
   featured: boolean;
+  outcomes: string[];
+  skills: string[];
+  requirements: string[];
+  audience: string[];
+  ageMin?: number | null;
+  ageMax?: number | null;
+  groupSize?: number | null;
+  teachingLanguage?: string | null;
+  certificate: boolean;
+  track?: string | null;
+  levelCode?: string | null;
   modules: { title: string; goal: string | null; lessons: { title: string; durationMin: number; topics: string[] }[] }[];
 };
+
+const LIST_FIELDS = [
+  { name: "outcomes", label: "Чему научится ребёнок", placeholder: "Решать уравнения с дробями" },
+  { name: "skills", label: "Навыки (теги)", placeholder: "Логика" },
+  { name: "requirements", label: "Что нужно знать заранее", placeholder: "Знать таблицу умножения" },
+  { name: "audience", label: "Для кого курс", placeholder: "Ученикам 5–7 классов" },
+] as const;
 
 function makeKey() {
   return Math.random().toString(36).slice(2);
@@ -85,6 +104,8 @@ export function CourseForm({
   );
   const [published, setPublished] = useState(initialData?.published ?? true);
   const [featured, setFeatured] = useState(initialData?.featured ?? false);
+  const [certificate, setCertificate] = useState(initialData?.certificate ?? true);
+  const [track, setTrack] = useState(initialData?.track ?? "");
 
   useEffect(() => {
     if (state?.error) toast.error(state.error);
@@ -157,6 +178,7 @@ export function CourseForm({
       <input type="hidden" name="modulesJson" value={modulesJson} />
       <input type="hidden" name="published" value={published ? "on" : ""} />
       <input type="hidden" name="featured" value={featured ? "on" : ""} />
+      <input type="hidden" name="certificate" value={certificate ? "on" : ""} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="flex flex-col gap-4">
@@ -257,6 +279,89 @@ export function CourseForm({
           </div>
         </div>
       </div>
+
+      <section className="rounded-[1.4rem] border border-border bg-surface p-5 shadow-glow-sm sm:p-6">
+        <h2 className="font-display text-lg font-semibold text-ink">Что увидят родители на странице курса</h2>
+        <p className="mt-1 text-sm text-muted">Каждый пункт — с новой строки. Пустые списки на странице не показываются.</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          {LIST_FIELDS.map((field) => (
+            <div key={field.name} className="flex flex-col gap-1.5">
+              <Label htmlFor={field.name}>{field.label}</Label>
+              <Textarea
+                id={field.name}
+                name={field.name}
+                rows={4}
+                placeholder={field.placeholder}
+                defaultValue={initialData?.[field.name].join("\n") ?? ""}
+              />
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ageMin">Возраст: от</Label>
+            <Input id="ageMin" name="ageMin" type="number" min={3} max={18} defaultValue={initialData?.ageMin ?? ""} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="ageMax">Возраст: до</Label>
+            <Input id="ageMax" name="ageMax" type="number" min={3} max={18} defaultValue={initialData?.ageMax ?? ""} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="groupSize">Учеников в группе, до</Label>
+            <Input id="groupSize" name="groupSize" type="number" min={1} max={50} defaultValue={initialData?.groupSize ?? ""} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="teachingLanguage">Язык обучения</Label>
+            <Input
+              id="teachingLanguage"
+              name="teachingLanguage"
+              placeholder="Туркменский, русский"
+              defaultValue={initialData?.teachingLanguage ?? ""}
+            />
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="track">Линейка курсов</Label>
+            <Input
+              id="track"
+              name="track"
+              list="course-tracks"
+              placeholder="english"
+              value={track}
+              onChange={(e) => setTrack(e.target.value)}
+            />
+            <datalist id="course-tracks">
+              {Object.entries(TRACK_NAMES).map(([value, name]) => (
+                <option key={value} value={value}>
+                  {name}
+                </option>
+              ))}
+            </datalist>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="levelCode">Ступень в линейке</Label>
+            <Select name="levelCode" defaultValue={initialData?.levelCode ?? undefined} disabled={!track.trim()}>
+              <SelectTrigger id="levelCode">
+                <SelectValue placeholder="Не выбрана" />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGE_LADDER.map((step) => (
+                  <SelectItem key={step.code} value={step.code}>
+                    {step.code} · {step.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex cursor-pointer items-center gap-2.5 self-end pb-2 text-sm font-semibold text-ink-soft lg:col-span-2">
+            <Switch checked={certificate} onCheckedChange={setCertificate} /> Выдаём сертификат по итогам курса
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-muted">
+          Курсы одной линейки (например, english A1 → A2 → B1) показываются на странице как путь по уровням.
+        </p>
+      </section>
 
       <section className="rounded-[1.4rem] border border-border bg-surface p-5 shadow-glow-sm sm:p-6">
         <h2 className="font-display text-lg font-semibold text-ink">Формат обучения</h2>

@@ -7,6 +7,7 @@ import type { Role } from "@prisma/client";
 import {
   ArrowUpRight,
   Atom,
+  Bot,
   BookOpen,
   ClipboardCheck,
   Languages,
@@ -41,6 +42,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { href: "/bilim/admin/site/animations", label: "Анимации", icon: Sparkles, adminOnly: true },
       { href: "/bilim/admin/site/contacts", label: "Контакты", icon: Phone, adminOnly: true },
       { href: "/bilim/admin/site/languages", label: "Языки", icon: Languages, adminOnly: true },
+      { href: "/bilim/admin/site/assistant", label: "ИИ-помощник", icon: Bot, adminOnly: true },
     ],
   },
   {

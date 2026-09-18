@@ -1,4 +1,6 @@
 import { GRADING_SCALE } from "@/lib/course-levels";
+import { getI18n } from "@/lib/i18n/server";
+import { getUiDictionary } from "@/lib/i18n/ui";
 import { cn } from "@/lib/utils";
 
 const TONES = {
@@ -8,17 +10,21 @@ const TONES = {
   rose: "bg-rose",
 } as const;
 
+// Certificates carry the English mark next to the local one, so it is shown in every language.
+const EN_BANDS = getUiDictionary("en").grading.bands;
+
 /** How results are marked: weekly tests and the final test are scored out of 100. */
-export function GradingScale({ certificate }: { certificate: boolean }) {
+export async function GradingScale({ certificate }: { certificate: boolean }) {
+  const { t, locale } = await getI18n();
+
   return (
     <section aria-labelledby="grading-title" className="rounded-[1.6rem] border border-border bg-surface p-5 sm:p-7">
       <h2 id="grading-title" className="font-display text-2xl font-bold tracking-[-0.03em] text-ink">
-        Как оцениваем результат
+        {t.grading.title}
       </h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-        Каждую неделю — короткий тест, в конце курса — итоговая работа. Баллы из 100 сразу появляются в личном кабинете
-        родителя.
-        {certificate && " Сертификат выдаём при итоговом результате от 60 баллов, оценка указывается в нём."}
+        {t.grading.description}
+        {certificate && ` ${t.grading.certificateNote}`}
       </p>
 
       <div className="mt-5 flex h-3 overflow-hidden rounded-full" aria-hidden>
@@ -36,7 +42,8 @@ export function GradingScale({ certificate }: { certificate: boolean }) {
                 {band.min}–{band.max}
               </p>
               <p className="text-xs font-semibold text-ink-soft">
-                {band.label} <span className="text-muted">· {band.en}</span>
+                {t.grading.bands[band.key]}
+                {locale !== "en" && <span className="text-muted"> · {EN_BANDS[band.key]}</span>}
               </p>
             </div>
           </li>

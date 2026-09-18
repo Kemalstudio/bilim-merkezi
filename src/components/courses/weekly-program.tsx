@@ -2,39 +2,35 @@
 
 import { useRef, useState, type KeyboardEvent } from "react";
 import { CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Clock, Flag, LayoutGrid, ListTree } from "lucide-react";
-import { cn, pluralizeRu } from "@/lib/utils";
-import {
-  formatMinutes,
-  lessonsPerWeekLabel,
-  totalHoursLabel,
-  weekLoad,
-  weeklyHoursLabel,
-  weeksLabel,
-  type CourseFormat,
-} from "@/lib/course-schedule";
+import { cn } from "@/lib/utils";
+import { weekLoad, type CourseFormat } from "@/lib/course-schedule";
+import { tpl } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n-provider";
 
 type Lesson = { id: string; title: string; durationMin: number; topics: string[] };
 type Week = { id: string; title: string; goal: string | null; lessons: Lesson[] };
 
 const VIEWS = [
-  { value: "weeks", label: "По неделям", icon: LayoutGrid },
-  { value: "outline", label: "Вся программа", icon: ListTree },
+  { value: "weeks", icon: LayoutGrid },
+  { value: "outline", icon: ListTree },
 ] as const;
 
 /**
- * The programme in two views. "По неделям": a row of week tabs, and for the chosen week its goal,
+ * The programme in two views. By week: a row of week tabs, and for the chosen week its goal,
  * how the hours split between lessons and self-study, and the lessons with their topics.
- * "Вся программа": every week as a collapsible row with lesson count and class time, with
+ * Full programme: every week as a collapsible row with lesson count and class time, with
  * expand/collapse all. Both views are always in the page (the inactive one hidden).
  */
 export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: CourseFormat }) {
+  const { t, f } = useI18n();
+  const p = t.program;
   const [active, setActive] = useState(0);
   const [view, setView] = useState<(typeof VIEWS)[number]["value"]>("weeks");
   const [openWeeks, setOpenWeeks] = useState<ReadonlySet<number>>(() => new Set([0]));
   const tabsRef = useRef<HTMLDivElement>(null);
 
   if (weeks.length === 0) {
-    return <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted">Программа скоро появится.</p>;
+    return <p className="rounded-2xl border border-dashed border-border p-6 text-sm text-muted">{p.empty}</p>;
   }
 
   const totalLessons = weeks.reduce((sum, week) => sum + week.lessons.length, 0);
@@ -67,10 +63,10 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
   }
 
   const facts = [
-    { value: weeksLabel(weeks.length), label: "длительность" },
-    { value: `${totalLessons} ${pluralizeRu(totalLessons, ["урок", "урока", "уроков"])}`, label: "за весь курс" },
-    { value: lessonsPerWeekLabel(format.lessonsPerWeek), label: "с преподавателем" },
-    { value: weeklyHoursLabel(format), label: `${totalHoursLabel(weeks.length, format)} всего` },
+    { value: f.weeks(weeks.length), label: p.factDuration },
+    { value: f.count(totalLessons, t.units.lesson), label: p.factTotal },
+    { value: f.lessonsPerWeek(format.lessonsPerWeek), label: p.factTeacher },
+    { value: f.weeklyHours(format), label: tpl(p.factHoursTotal, { hours: f.totalHours(weeks.length, format) }) },
   ];
 
   return (
@@ -85,8 +81,8 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
       </dl>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <div role="group" aria-label="Вид программы" className="flex rounded-xl bg-surface-sunken p-1">
-          {VIEWS.map(({ value, label, icon: Icon }) => (
+        <div role="group" aria-label={p.viewLabel} className="flex rounded-xl bg-surface-sunken p-1">
+          {VIEWS.map(({ value, icon: Icon }) => (
             <button
               key={value}
               type="button"
@@ -98,15 +94,14 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
               )}
             >
               <Icon aria-hidden className="h-3.5 w-3.5" />
-              {label}
+              {p.views[value]}
             </button>
           ))}
         </div>
         {view === "outline" && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-semibold text-muted">
             <span>
-              {weeksLabel(weeks.length)} · {totalLessons} {pluralizeRu(totalLessons, ["урок", "урока", "уроков"])} · {totalTopics}{" "}
-              {pluralizeRu(totalTopics, ["тема", "темы", "тем"])}
+              {f.weeks(weeks.length)} · {f.count(totalLessons, t.units.lesson)} · {f.count(totalTopics, t.units.topic)}
             </span>
             <button
               type="button"
@@ -114,7 +109,7 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
               className="flex cursor-pointer items-center gap-1 font-bold text-brand-ink underline-offset-4 hover:underline"
             >
               <ChevronsUpDown aria-hidden className="h-3.5 w-3.5" />
-              {allOpen ? "Свернуть все" : "Развернуть все"}
+              {allOpen ? p.collapseAll : p.expandAll}
             </button>
           </div>
         )}
@@ -124,7 +119,7 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
       <div
         ref={tabsRef}
         role="tablist"
-        aria-label="Недели программы"
+        aria-label={p.weeksLabel}
         onKeyDown={onTabsKeyDown}
         className="-mx-1 mt-4 flex snap-x gap-2 overflow-x-auto px-1 pb-2"
       >
@@ -148,7 +143,7 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
               )}
             >
               <span className={cn("text-[0.65rem] font-bold uppercase tracking-[0.12em]", selected ? "text-accent" : "text-muted")}>
-                Неделя {index + 1}
+                {tpl(p.weekN, { n: index + 1 })}
               </span>
               <span className="line-clamp-1 text-sm font-bold">{week.title}</span>
             </button>
@@ -171,7 +166,7 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.12em] text-brand-ink">
-                  Неделя {index + 1} из {weeks.length}
+                  {tpl(p.weekNofM, { n: index + 1, total: weeks.length })}
                 </p>
                 <h3 className="mt-1 font-display text-2xl font-bold tracking-[-0.04em] text-ink">{week.title}</h3>
               </div>
@@ -180,19 +175,19 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
                   type="button"
                   onClick={() => select(index - 1)}
                   disabled={index === 0}
-                  aria-label="Предыдущая неделя"
+                  aria-label={p.prevWeek}
                   className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border text-ink-soft transition-colors hover:border-brand/40 hover:text-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft aria-hidden className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => select(index + 1)}
                   disabled={index === weeks.length - 1}
-                  aria-label="Следующая неделя"
+                  aria-label={p.nextWeek}
                   className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-border text-ink-soft transition-colors hover:border-brand/40 hover:text-ink active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight aria-hidden className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -200,7 +195,7 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
             {week.goal && (
               <p className="mt-4 flex w-fit items-start gap-2 rounded-xl bg-accent/15 px-3.5 py-2.5 text-sm font-semibold text-ink">
                 <Flag aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-accent-deep" />
-                Итог недели: {week.goal}
+                {tpl(p.weekGoal, { goal: week.goal })}
               </p>
             )}
 
@@ -208,18 +203,23 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
               <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 text-xs font-semibold">
                 <span className="flex items-center gap-2 text-ink-soft">
                   <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-brand" />
-                  Уроки с преподавателем — {formatMinutes(load.classMinutes)}
+                  {tpl(p.classTime, { minutes: f.minutes(load.classMinutes) })}
                 </span>
                 <span className="flex items-center gap-2 text-ink-soft">
                   <span aria-hidden className="h-2.5 w-2.5 rounded-full bg-accent" />
-                  Практика и домашние задания — {load.practiceMin === load.practiceMax ? load.practiceMax : `${load.practiceMin}–${load.practiceMax}`} ч
+                  {tpl(p.practiceTime, { hours: f.range(load.practiceMin, load.practiceMax) })}
                 </span>
-                <span className="text-muted">Всего {weeklyHoursLabel(format)}</span>
+                <span className="text-muted">{tpl(p.total, { hours: f.weeklyHours(format) })}</span>
               </div>
               <div
                 className="mt-2 flex h-2.5 overflow-hidden rounded-full bg-surface-sunken"
                 role="img"
-                aria-label={`Неделя ${index + 1}: ${formatMinutes(load.classMinutes)} уроков и ${load.practiceMin}–${load.practiceMax} ч практики`}
+                aria-label={tpl(p.weekBar, {
+                  n: index + 1,
+                  minutes: f.minutes(load.classMinutes),
+                  min: load.practiceMin,
+                  max: load.practiceMax,
+                })}
               >
                 <span className="h-full bg-brand" style={{ width: `${load.classShare * 100}%` }} />
                 <span className="h-full bg-accent" style={{ width: `${practiceShare * 100}%` }} />
@@ -230,10 +230,10 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
               {week.lessons.map((lesson, lessonIndex) => (
                 <li key={lesson.id} className="flex flex-col rounded-2xl border border-border bg-surface-sunken/40 p-4">
                   <div className="flex items-center justify-between gap-3 text-xs font-bold">
-                    <span className="rounded-full bg-panel px-2.5 py-1 text-white">Урок {lessonIndex + 1}</span>
+                    <span className="rounded-full bg-panel px-2.5 py-1 text-white">{tpl(p.lessonN, { n: lessonIndex + 1 })}</span>
                     <span className="flex items-center gap-1 text-muted">
                       <Clock aria-hidden className="h-3.5 w-3.5" />
-                      {formatMinutes(lesson.durationMin)}
+                      {f.minutes(lesson.durationMin)}
                     </span>
                   </div>
                   <h4 className="mt-3 font-display text-base font-bold leading-snug tracking-[-0.02em] text-ink">{lesson.title}</h4>
@@ -274,12 +274,14 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
                     className={cn("h-4 w-4 shrink-0 text-muted transition-transform duration-200", open && "rotate-180")}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[0.65rem] font-bold uppercase tracking-[0.12em] text-brand-ink">Неделя {index + 1}</span>
+                    <span className="block text-[0.65rem] font-bold uppercase tracking-[0.12em] text-brand-ink">
+                      {tpl(p.weekN, { n: index + 1 })}
+                    </span>
                     <span className="block font-display text-base font-bold tracking-[-0.02em] text-ink">{week.title}</span>
                   </span>
                   <span className="shrink-0 text-right text-xs font-semibold text-muted">
-                    {week.lessons.length} {pluralizeRu(week.lessons.length, ["урок", "урока", "уроков"])}
-                    <span className="hidden sm:inline"> · {formatMinutes(classMinutes)}</span>
+                    {f.count(week.lessons.length, t.units.lesson)}
+                    <span className="hidden sm:inline"> · {f.minutes(classMinutes)}</span>
                   </span>
                 </button>
               </h3>
@@ -287,20 +289,20 @@ export function WeeklyProgram({ weeks, format }: { weeks: Week[]; format: Course
                 {week.goal && (
                   <p className="mb-2 flex items-start gap-2 text-sm font-semibold text-ink">
                     <Flag aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-accent-deep" />
-                    Итог недели: {week.goal}
+                    {tpl(p.weekGoal, { goal: week.goal })}
                   </p>
                 )}
                 <ul className="divide-y divide-border/70">
                   {week.lessons.map((lesson, lessonIndex) => (
                     <li key={lesson.id} className="flex items-start gap-3 py-2.5">
-                      <span className="mt-0.5 w-14 shrink-0 text-xs font-bold text-muted">Урок {lessonIndex + 1}</span>
+                      <span className="mt-0.5 w-16 shrink-0 text-xs font-bold text-muted">{tpl(p.lessonN, { n: lessonIndex + 1 })}</span>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-bold text-ink">{lesson.title}</p>
                         {lesson.topics.length > 0 && <p className="mt-0.5 text-xs leading-5 text-muted">{lesson.topics.join(" · ")}</p>}
                       </div>
                       <span className="flex shrink-0 items-center gap-1 text-xs font-semibold text-muted">
                         <Clock aria-hidden className="h-3.5 w-3.5" />
-                        {formatMinutes(lesson.durationMin)}
+                        {f.minutes(lesson.durationMin)}
                       </span>
                     </li>
                   ))}

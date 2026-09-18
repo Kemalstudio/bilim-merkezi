@@ -8,12 +8,23 @@
 /** Default country calling code — Turkmenistan. */
 export const DEFAULT_COUNTRY_CODE = "993";
 
-/** National subscriber number length for the default country (e.g. 65123456). */
-const NATIONAL_LENGTH = 8;
+/**
+ * Operator prefixes in service in Turkmenistan: 61-65 are Altyn Asyr (TM Cell)
+ * mobile ranges, 71-72 are Turkmentelecom. A number outside this list cannot
+ * receive our SMS, so it is rejected at entry rather than after a failed send.
+ */
+export const OPERATOR_PREFIXES = ["61", "62", "63", "64", "65", "71", "72"] as const;
+
+/** Digits after the operator prefix (e.g. "123456" in 65 123456). */
+const SUBSCRIBER_LENGTH = 6;
+
+/** National subscriber number length — operator prefix plus subscriber digits. */
+const NATIONAL_LENGTH = 2 + SUBSCRIBER_LENGTH;
 
 /**
  * Reduces any user-typed number to digits only, in international form and
- * without a leading "+". Returns null when the input cannot be a real number.
+ * without a leading "+". Returns null unless the result is a real Turkmen
+ * number: +993, a serviced operator prefix, then exactly six digits.
  */
 export function normalizePhone(input: string): string | null {
   const digits = input.replace(/\D/g, "");
@@ -25,14 +36,18 @@ export function normalizePhone(input: string): string | null {
       ? digits.slice(1)
       : digits;
 
-  const full =
-    withoutTrunk.length === NATIONAL_LENGTH
-      ? `${DEFAULT_COUNTRY_CODE}${withoutTrunk}`
-      : withoutTrunk;
+  const national = withoutTrunk.startsWith(DEFAULT_COUNTRY_CODE)
+    ? withoutTrunk.slice(DEFAULT_COUNTRY_CODE.length)
+    : withoutTrunk;
 
-  // Shortest plausible international number is 8 digits; E.164 caps at 15.
-  if (full.length < 8 || full.length > 15) return null;
-  return full;
+  if (national.length !== NATIONAL_LENGTH) return null;
+  if (!isServicedPrefix(national.slice(0, 2))) return null;
+
+  return `${DEFAULT_COUNTRY_CODE}${national}`;
+}
+
+function isServicedPrefix(prefix: string): boolean {
+  return (OPERATOR_PREFIXES as readonly string[]).includes(prefix);
 }
 
 /**
@@ -50,8 +65,33 @@ export function formatPhone(normalized: string): string {
   return `+${normalized}`;
 }
 
-/** Masks all but the last two digits, for "code sent to …56" confirmations. */
+/**
+ * Masks the middle digits for "code sent to …56" confirmations, keeping the
+ * operator prefix and last two digits so a parent can tell which of their
+ * numbers the code went to: "+993 65 •• •• 56".
+ */
 export function maskPhone(normalized: string): string {
-  const visible = normalized.slice(-2);
-  return `+${normalized.slice(0, 4)} •• •• ${visible}`;
+  const national = normalized.startsWith(DEFAULT_COUNTRY_CODE)
+    ? normalized.slice(DEFAULT_COUNTRY_CODE.length)
+    : null;
+
+  if (national?.length === NATIONAL_LENGTH) {
+    return `+${DEFAULT_COUNTRY_CODE} ${national.slice(0, 2)} •• •• ${national.slice(-2)}`;
+  }
+  return `+${normalized.slice(0, 4)} •• •• ${normalized.slice(-2)}`;
+}
+
+/**
+ * Auth.js needs a unique email on every account, so phone sign-ups get a placeholder.
+ * It is an internal id, never an address: never show it or send mail to it.
+ */
+export const PLACEHOLDER_EMAIL_DOMAIN = "phone.bilim.local";
+
+export function placeholderEmail(phone: string) {
+  return `${phone}@${PLACEHOLDER_EMAIL_DOMAIN}`;
+}
+
+/** The address worth showing or mailing, or null for a phone account's placeholder. */
+export function realEmail(email: string | null | undefined): string | null {
+  return email && !email.endsWith(`@${PLACEHOLDER_EMAIL_DOMAIN}`) ? email : null;
 }

@@ -15,6 +15,7 @@ const tm: Dictionary = {
     logout: "Çykmak",
     menu: "Menýuny aç",
     language: "Dil",
+    theme: "Tema",
   },
   hero: {
     badge: "8–11 synplar · onlaýn we merkezde",
@@ -184,15 +185,15 @@ const tm: Dictionary = {
       subtitle: "Üç gysga soraga jogap beriň — size laýyk ugry hödürläris.",
       questions: [
         {
-          question: "Siziň derejäňiz haýsy?",
+          question: "Çaganyň derejesi haýsy?",
           options: ["Başlangyç", "Käbir tejribe bar", "Ynamly derejede"],
         },
         {
-          question: "Size näme has gyzykly?",
-          options: ["Programmirleme", "Dizaýn", "Diller", "Marketing"],
+          question: "Çaga näme has gyzykly?",
+          options: ["Programmirleme", "Döredijilik", "Diller", "Matematika we ylymlar"],
         },
         {
-          question: "Hepdede näçe wagt sarp edip bilersiňiz?",
+          question: "Çaga hepdede näçe wagt okap biler?",
           options: ["2–3 sagat", "4–6 sagat", "7+ sagat"],
         },
       ],
@@ -251,32 +252,36 @@ const tm: Dictionary = {
     prompt: "Jogaby tapmadyňyzmy? Bize ýazyň — koordinator bir iş gününiň dowamynda jogap berer.",
     items: [
       {
-        q: "Başlamak üçin tejribe gerekmi?",
-        a: "Ýok. Her kursuň derejesi görkezilen — başlangyçlar üçin hem, bilimini çuňlaşdyrmak isleýänler üçin hem maksatnamalar bar.",
+        q: "Kurslaryňyz haýsy ýaş üçin?",
+        a: "5 ýaşdan 17 ýaşa çenli mekdep okuwçylary üçin. Ýaş her kursuň sahypasynda görkezilýär, sanawda bolsa ýaş boýunça süzgüç bar.",
       },
       {
-        q: "Kurs näçe wagt dowam edýär?",
-        a: "Dowamlylyk her kursuň sahypasynda görkezilen — birnäçe hepdeden birnäçe aýa çenli, amatly depginde.",
+        q: "Sapaklar nähili geçýär?",
+        a: "Mugallym bilen kiçi toparlarda. Hepdede näçe sapak bolýandygy we öý işleri bilen bilelikde okuwyň näçe sagat alýandygy kursuň sahypasynda görkezilýär.",
       },
       {
-        q: "Şahadatnama alaryn?",
-        a: "Hawa, kursy tamamlanyňyzdan soň rezýumede paýlaşyp boljak şahadatnama alýarsyňyz.",
+        q: "Çagany nädip ýazdyrmaly?",
+        a: "Kursy açyň we «Çagany ýazdyr» düwmesine basyň: çaganyň profilini saýlaň ýa-da goşuň, dogluş hakynda şahadatnamanyň suratyny ýükläň we kart bilen töläň. Bu birnäçe minut alýar.",
       },
       {
-        q: "Telefondan okap bolýarmy?",
-        a: "Hawa, platforma mobil enjamlar üçin doly uýgunlaşdyrylan.",
+        q: "Haýsy resminamalar gerek?",
+        a: "Çaganyň dogluş hakynda şahadatnamasynyň belgisi we skany ýa-da suraty. Resminamany diňe siz we merkeziň administrasiýasy görýär.",
       },
       {
-        q: "Kursa girmek wagt bilen çäklendirilenmi?",
-        a: "Ýok, tölegden soň kurs materiallaryna girmek wagt çägi bolmazdan dowam edýär.",
+        q: "Töleg nähili geçýär?",
+        a: "Goragly töleg sahypasy arkaly kart bilen onlaýn. Töleg tassyklanandan soň kurs «Meniň kurslarym» bölüminde peýda bolýar.",
       },
       {
-        q: "Töleg nädip amala aşyrylýar?",
-        a: "Töleg Stripe arkaly kart bilen — maglumatlaryňyz goralýar, töleg tassyklanandan soň girme derrew açylýar.",
+        q: "Çaganyň üstünliklerini nirede görmeli?",
+        a: "Ene-atanyň şahsy otagynda: her testiň bally, ösüş we sapaklaryň tertibi. Ballary baş sahypadan telefon belgisi we SMS kody arkaly hem barlap bolýar.",
       },
       {
-        q: "Ýene-de soragym bar bolsa näme etmeli?",
-        a: "«Habarlaşmak» sahypasy arkaly ýazyň — bir iş güni içinde jogap berýäris.",
+        q: "Sertifikat berilýärmi?",
+        a: "Hawa, eger kursuň sahypasynda görkezilen bolsa: jemleýji netije 100-den 60 baldan ýokary bolanda sertifikat berilýär.",
+      },
+      {
+        q: "Soraglarym galsa näme etmeli?",
+        a: "Bize ýazyň ýa-da jaň ediň — maglumatlar «Habarlaşmak» sahypasynda. Bir iş gününiň dowamynda jogap berýäris.",
       },
     ],
   },
@@ -300,10 +305,10 @@ const tm: Dictionary = {
       },
       categories: {
         title: "Kategoriýalar",
-        programming: "Programmirleme",
-        design: "Dizaýn",
-        marketing: "Marketing",
+        math: "Matematika",
+        science: "Tebigy ylymlar",
         languages: "Daşary ýurt dilleri",
+        programming: "Programmirleme",
       },
       account: { title: "Hasap", login: "Gir", register: "Hasaba dur", account: "Şahsy otag" },
     },

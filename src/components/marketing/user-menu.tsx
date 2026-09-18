@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { signOutAction } from "@/actions/auth";
 import { initials } from "@/lib/utils";
+import { realEmail } from "@/lib/phone";
 
 type SessionUser = {
   name?: string | null;
@@ -25,19 +26,20 @@ type MenuLabels = { account: string; myCourses: string; admin: string; logout: s
 
 export function UserMenu({ user, labels }: { user: SessionUser; labels: MenuLabels }) {
   const canModerate = user.role === "ADMIN" || user.role === "MODERATOR";
+  const email = realEmail(user.email);
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-start cursor-pointer">
+      <DropdownMenuTrigger aria-label={labels.account} className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-brand-start cursor-pointer">
         <Avatar>
           <AvatarImage src={user.image ?? undefined} alt={user.name ?? ""} />
-          <AvatarFallback>{initials(user.name ?? user.email ?? "?")}</AvatarFallback>
+          <AvatarFallback>{initials(user.name ?? email ?? "?")}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel className="flex flex-col gap-0.5">
           <span className="text-sm font-semibold text-ink">{user.name}</span>
-          <span className="truncate text-xs font-normal text-muted">{user.email}</span>
+          {email && <span className="truncate text-xs font-normal text-muted">{email}</span>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>

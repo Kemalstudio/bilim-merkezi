@@ -24,10 +24,10 @@ export async function SiteFooter() {
     {
       title: t.columns.categories.title,
       links: [
-        { href: "/courses?category=programming", label: t.columns.categories.programming },
-        { href: "/courses?category=design", label: t.columns.categories.design },
-        { href: "/courses?category=marketing", label: t.columns.categories.marketing },
+        { href: "/courses?category=math", label: t.columns.categories.math },
+        { href: "/courses?category=science", label: t.columns.categories.science },
         { href: "/courses?category=languages", label: t.columns.categories.languages },
+        { href: "/courses?category=programming", label: t.columns.categories.programming },
       ],
     },
     {

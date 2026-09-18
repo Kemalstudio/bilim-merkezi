@@ -123,6 +123,20 @@ model Course {
   weeklyHoursMin   Int         @default(15)
   weeklyHoursMax   Int         @default(20)
   startDate        DateTime?
+  // What the course page shows before the programme, one item per line in the admin form:
+  // results the child reaches, skills practised, what to know beforehand and who it suits.
+  outcomes         String[]    @default([])
+  skills           String[]    @default([])
+  requirements     String[]    @default([])
+  audience         String[]    @default([])
+  ageMin           Int?
+  ageMax           Int?
+  groupSize        Int?
+  teachingLanguage String?
+  certificate      Boolean     @default(true)
+  // Courses of one ladder (e.g. "english") share a track; levelCode is the step, e.g. "A2".
+  track            String?
+  levelCode        String?
   price            Decimal     @db.Decimal(10, 2)
   discountPrice    Decimal?    @db.Decimal(10, 2)
   coverImage       String?
@@ -146,6 +160,9 @@ model Course {
   libraryResources LibraryResource[]
   scheduleEvents   ScheduleEvent[]
 
+  @@index([track])
+  @@index([categoryId])
+  @@index([published, createdAt])
   @@map("courses")
 }
 
@@ -195,6 +212,7 @@ model Enrollment {
 
   @@unique([userId, courseId, childId])
   @@index([childId])
+  @@index([courseId])
   @@map("enrollments")
 }
 
@@ -233,6 +251,8 @@ model Payment {
 
   promoRedemption PromoRedemption?
 
+  @@index([userId])
+  @@index([courseId])
   @@map("payments")
 }
 
@@ -280,6 +300,7 @@ model LibraryResource {
   courseId String?
   course   Course? @relation(fields: [courseId], references: [id])
 
+  @@index([courseId])
   @@map("library_resources")
 }
 
@@ -295,6 +316,7 @@ model Review {
   course   Course @relation(fields: [courseId], references: [id])
 
   @@unique([userId, courseId])
+  @@index([courseId, createdAt])
   @@map("reviews")
 }
 
@@ -309,6 +331,7 @@ model AuditLog {
   actorId String
   actor   User   @relation(fields: [actorId], references: [id])
 
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -375,6 +398,8 @@ model PhoneOtp {
 enum OtpPurpose {
   LOGIN
   RECOVERY
+  /// Viewing exam results from the home page without signing in.
+  RESULTS
 }
 
 /// Upcoming lessons and events shown on a parent's dashboard.
@@ -403,4 +428,26 @@ model SiteSetting {
   updatedById String?
 
   @@map("site_settings")
+}
+
+/// Fixed-window request counters shared by every server instance (see src/lib/rate-limit.ts).
+model RateLimit {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@index([resetAt])
+  @@map("rate_limits")
+}
+
+/// Uploaded files when STORAGE_DRIVER=database: keeps uploads with the data, so any number of
+/// app servers (or a host without a persistent disk) can serve them. See src/lib/storage.
+model StoredFile {
+  key         String   @id
+  contentType String
+  size        Int
+  data        Bytes
+  createdAt   DateTime @default(now())
+
+  @@map("stored_files")
 }

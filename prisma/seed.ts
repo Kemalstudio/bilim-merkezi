@@ -37,6 +37,17 @@ type SeedCourse = {
   modules: SeedModule[];
 };
 
+/**
+ * Adult-oriented programmes kept for their demo enrollments but hidden from the catalogue:
+ * the centre's audience is school students, and these do not fit it.
+ */
+export const HIDDEN_COURSE_SLUGS = [
+  "digital-marketing-targetirovannaya-reklama",
+  "smm-prodvizhenie-v-socsetyah",
+  "angliyskiy-dlya-delovogo-obshcheniya",
+  "osnovy-predprinimatelstva",
+];
+
 const courses: SeedCourse[] = [
   {
     title: "Веб-разработка с нуля: HTML, CSS и JavaScript",
@@ -467,7 +478,7 @@ async function main() {
         instructorTitle: c.instructorTitle,
         instructorBio: c.instructorBio,
         featured: c.featured ?? false,
-        published: true,
+        published: !HIDDEN_COURSE_SLUGS.includes(c.slug),
         categoryId: category.id,
         ...(courseDetails[c.slug] ? courseDetailsData(courseDetails[c.slug]) : {}),
         modules: {

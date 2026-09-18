@@ -1,4 +1,4 @@
-import { Code2, Palette, Megaphone, Languages, Briefcase, Sparkles, type LucideIcon } from "lucide-react";
+import { Calculator, Code2, FlaskConical, Palette, Megaphone, Languages, Briefcase, Puzzle, Sparkles, type LucideIcon } from "lucide-react";
 
 export const categoryIcons: Record<string, LucideIcon> = {
   programming: Code2,
@@ -7,6 +7,9 @@ export const categoryIcons: Record<string, LucideIcon> = {
   languages: Languages,
   business: Briefcase,
   growth: Sparkles,
+  math: Calculator,
+  science: FlaskConical,
+  creative: Puzzle,
 };
 
 export function getCategoryIcon(slug: string): LucideIcon {
@@ -19,6 +22,7 @@ const levelLabels: Record<string, string> = {
   ADVANCED: "Продвинутый",
 };
 
+/** Russian level name for the admin panel; the public site uses the formatter. */
 export function getLevelLabel(level: string) {
   return levelLabels[level] ?? level;
 }

@@ -6,8 +6,12 @@ import { LottieIcon } from "@/components/shared/lottie-icon";
 import { requireUser } from "@/lib/rbac";
 import { stripe } from "@/lib/stripe";
 import { fulfillCheckoutSession, type FulfillResult } from "@/lib/checkout";
+import { getI18n } from "@/lib/i18n/server";
 
-export const metadata: Metadata = { title: "Статус оплаты" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.checkout.metaTitle };
+}
 
 /**
  * Stripe sends the parent here right after paying. The session is checked on the spot, so the
@@ -32,6 +36,8 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<{ session_id?: string }>;
 }) {
   const user = await requireUser();
+  const { t } = await getI18n();
+  const c = t.checkout;
   const { session_id: sessionId } = await searchParams;
   const status = await confirmPayment(sessionId, user.id);
   const paid = status === "fulfilled" || status === "already-fulfilled";
@@ -41,12 +47,10 @@ export default async function CheckoutSuccessPage({
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
         {/* Plays once and stops on the finished check, before the file's own fade-out. */}
         <LottieIcon src="/lottie/success.json" trigger="once" playTo={0.7} className="h-28 w-28" />
-        <h1 className="font-display text-2xl font-bold text-ink">Оплата прошла успешно!</h1>
-        <p className="text-muted">
-          Запись подтверждена — курс уже в разделе «Мои курсы». Расписание занятий появится в кабинете.
-        </p>
+        <h1 className="font-display text-2xl font-bold text-ink">{c.successTitle}</h1>
+        <p className="text-muted">{c.successText}</p>
         <Button asChild size="lg">
-          <Link href="/account/enrollments">Перейти к моим курсам</Link>
+          <Link href="/account/enrollments">{c.toCourses}</Link>
         </Button>
       </div>
     );
@@ -57,18 +61,16 @@ export default async function CheckoutSuccessPage({
       <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber/10 text-amber">
         <Clock aria-hidden className="h-8 w-8" />
       </span>
-      <h1 className="font-display text-2xl font-bold text-ink">Проверяем оплату</h1>
+      <h1 className="font-display text-2xl font-bold text-ink">{c.pendingTitle}</h1>
       <p className="text-muted">
-        {status === "not-paid"
-          ? "Банк ещё не подтвердил платёж. Обычно это занимает несколько минут — статус обновится в разделе «Мои курсы»."
-          : "Не удалось сразу подтвердить платёж. Если деньги списаны, запись активируется автоматически; при вопросах свяжитесь с нами."}
+        {status === "not-paid" ? c.pendingText : c.unknownText}
       </p>
       <div className="flex flex-wrap justify-center gap-3">
         <Button asChild size="lg">
-          <Link href="/account/enrollments">Мои курсы</Link>
+          <Link href="/account/enrollments">{c.myCourses}</Link>
         </Button>
         <Button asChild size="lg" variant="outline">
-          <Link href="/contact">Связаться с нами</Link>
+          <Link href="/contact">{t.common.contactUs}</Link>
         </Button>
       </div>
     </div>

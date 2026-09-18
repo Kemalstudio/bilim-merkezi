@@ -13,6 +13,13 @@ export const moduleSchema = z.object({
   lessons: z.array(lessonSchema).min(1, "Добавьте хотя бы один урок"),
 });
 
+/** A list typed one item per line in the admin form. */
+const lineList = (max: number, label: string) =>
+  z.array(z.string().trim().min(1).max(160, `${label}: пункт длиннее 160 символов`)).max(max, `${label}: не больше ${max} пунктов`);
+
+const optionalInt = (min: number, max: number, label: string) =>
+  z.coerce.number().int().min(min, `${label}: минимум ${min}`).max(max, `${label}: максимум ${max}`).nullish();
+
 export const courseSchema = z
   .object({
     title: z.string().min(3, "Минимум 3 символа"),
@@ -29,14 +36,40 @@ export const courseSchema = z
     instructorName: z.string().min(2, "Укажите имя преподавателя"),
     instructorTitle: z.string().optional(),
     instructorBio: z.string().optional(),
-    coverImage: z.string().optional(),
+    coverImage: z
+      .string()
+      .regex(/^\/(uploads|files\/covers)\/[\w-]+\.(png|jpe?g|gif|webp)$/i, "Загрузите обложку через форму")
+      .optional(),
     published: z.boolean(),
     featured: z.boolean(),
+    outcomes: lineList(12, "Чему научится"),
+    skills: lineList(15, "Навыки"),
+    requirements: lineList(10, "Требования"),
+    audience: lineList(10, "Для кого курс"),
+    ageMin: optionalInt(3, 18, "Возраст от"),
+    ageMax: optionalInt(3, 18, "Возраст до"),
+    groupSize: optionalInt(1, 50, "Размер группы"),
+    teachingLanguage: z.string().trim().max(80).optional(),
+    certificate: z.boolean(),
+    track: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .regex(/^[a-z0-9-]*$/, "Линейка курсов: только латиница, цифры и дефис")
+      .optional(),
+    levelCode: z.string().trim().max(8).optional(),
     modules: z.array(moduleSchema).min(1, "Добавьте хотя бы одну неделю программы"),
   })
   .superRefine((course, ctx) => {
     if (course.weeklyHoursMax < course.weeklyHoursMin) {
       ctx.addIssue({ code: "custom", path: ["weeklyHoursMax"], message: "Верхняя граница часов в неделю меньше нижней" });
+    }
+    // The site shows and charges the discount price whenever it is set, so it must be lower.
+    if (course.discountPrice != null && course.discountPrice >= course.price) {
+      ctx.addIssue({ code: "custom", path: ["discountPrice"], message: "Цена со скидкой должна быть ниже обычной цены" });
+    }
+    if (course.ageMin != null && course.ageMax != null && course.ageMax < course.ageMin) {
+      ctx.addIssue({ code: "custom", path: ["ageMax"], message: "Возраст «до» меньше возраста «от»" });
     }
     // Every week follows the course's weekly format.
     course.modules.forEach((week, index) => {

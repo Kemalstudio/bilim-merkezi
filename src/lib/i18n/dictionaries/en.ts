@@ -15,6 +15,7 @@ const en: Dictionary = {
     logout: "Log out",
     menu: "Open menu",
     language: "Language",
+    theme: "Theme",
   },
   hero: {
     badge: "Grades 8–11 · online and in-centre",
@@ -184,15 +185,15 @@ const en: Dictionary = {
       subtitle: "Answer three quick questions — we'll suggest a direction that fits you.",
       questions: [
         {
-          question: "What's your current level?",
+          question: "What's your child's level?",
           options: ["Beginner", "Some experience", "Confident"],
         },
         {
-          question: "What interests you most?",
-          options: ["Programming", "Design", "Languages", "Marketing"],
+          question: "What does your child enjoy most?",
+          options: ["Programming", "Arts", "Languages", "Maths and science"],
         },
         {
-          question: "How much time can you study per week?",
+          question: "How much time can your child study per week?",
           options: ["2–3 hours", "4–6 hours", "7+ hours"],
         },
       ],
@@ -251,32 +252,36 @@ const en: Dictionary = {
     prompt: "Still have a question? Message us and a coordinator will reply within one working day.",
     items: [
       {
-        q: "Do I need prior experience to start?",
-        a: "No. Every course lists its level — there are programs for beginners and for those looking to go deeper.",
+        q: "What ages are your courses for?",
+        a: "School students aged 5 to 17. Each course page shows its age range, and the catalogue has an age filter.",
       },
       {
-        q: "How long does a course take?",
-        a: "Duration is listed on each course page — from a few weeks to a couple of months at a comfortable pace.",
+        q: "How are lessons run?",
+        a: "In small groups with a teacher. The course page shows how many lessons a week there are and how many hours study takes, homework included.",
       },
       {
-        q: "Will I get a certificate?",
-        a: "Yes, you receive a certificate on completion that you can share on your resume.",
+        q: "How do I enrol my child?",
+        a: "Open a course and press “Enrol your child”: pick or add your child's profile, upload a photo of the birth certificate and pay by card. It takes a few minutes.",
       },
       {
-        q: "Can I learn from my phone?",
-        a: "Yes, the platform is fully optimized for mobile devices.",
-      },
-      {
-        q: "Is access to a course time-limited?",
-        a: "No, once you pay, access to the course materials has no time limit.",
+        q: "Which documents are needed?",
+        a: "The number and a scan or photo of the child's birth certificate. Only you and the centre's staff can see it.",
       },
       {
         q: "How does payment work?",
-        a: "Payment is by card via Stripe — your data is protected, and access opens right after payment is confirmed.",
+        a: "By card online through a secure payment page. Once the payment is confirmed, the course appears in “My courses”.",
+      },
+      {
+        q: "Where can I follow my child's progress?",
+        a: "In the parent account: scores for every test, progress over time and the lesson schedule. You can also check scores from the home page with your phone number and an SMS code.",
+      },
+      {
+        q: "Is there a certificate?",
+        a: "Yes, when the course page says so: a certificate is issued for a final score of 60 out of 100 or more.",
       },
       {
         q: "What if I still have questions?",
-        a: "Reach out via the Contact page — we reply within one business day.",
+        a: "Write or call us — the details are on the Contact page. We reply within one working day.",
       },
     ],
   },
@@ -300,10 +305,10 @@ const en: Dictionary = {
       },
       categories: {
         title: "Categories",
-        programming: "Programming",
-        design: "Design",
-        marketing: "Marketing",
+        math: "Mathematics",
+        science: "Science",
         languages: "Foreign languages",
+        programming: "Programming",
       },
       account: { title: "Account", login: "Log in", register: "Sign up", account: "My account" },
     },
