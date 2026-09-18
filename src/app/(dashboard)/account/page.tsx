@@ -4,19 +4,25 @@ import { ArrowRight, Users } from "lucide-react";
 import { requireUser } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { getChildrenForParent, getUpcomingForParent } from "@/lib/children-data";
+import { getI18n } from "@/lib/i18n/server";
+import { tpl } from "@/lib/i18n/format";
 import { ChildCard } from "@/components/account/child-card";
 import { ChildFormDialog } from "@/components/account/child-form-dialog";
 import { ScheduleTimeline } from "@/components/account/schedule-timeline";
 import { EnrollmentList } from "@/components/account/enrollment-list";
 import { Button } from "@/components/ui/button";
-import { pluralizeRu } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Личный кабинет" };
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getI18n();
+  return { title: t.account.metaTitle };
+}
 
 export default async function AccountOverviewPage() {
   const user = await requireUser();
+  const { t, f } = await getI18n();
+  const a = t.account;
 
-  const [children, upcoming, enrollments] = await Promise.all([
+  const [children, upcoming, enrollments, activeCount, totalCount] = await Promise.all([
     getChildrenForParent(user.id),
     getUpcomingForParent(user.id),
     prisma.enrollment.findMany({
@@ -25,23 +31,25 @@ export default async function AccountOverviewPage() {
       orderBy: { createdAt: "desc" },
       take: 5,
     }),
+    prisma.enrollment.count({ where: { userId: user.id, status: "ACTIVE" } }),
+    prisma.enrollment.count({ where: { userId: user.id } }),
   ]);
 
-  const activeCount = enrollments.filter((enrollment) => enrollment.status === "ACTIVE").length;
   const examCount = children.filter((child) => child.latestExam).length;
+  const firstName = user.name?.split(" ")[0];
 
   return (
     <div className="flex flex-col gap-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="eyebrow mb-4">Личный кабинет</p>
+          <p className="eyebrow mb-4">{a.eyebrow}</p>
           <h1 className="font-display text-3xl font-bold tracking-[-0.045em] text-ink sm:text-4xl">
-            Здравствуйте, {user.name?.split(" ")[0] ?? "друг"}!
+            {tpl(a.hello, { name: firstName || a.friend })}
           </h1>
           <p className="mt-1 text-muted">
             {children.length === 0
-              ? "Добавьте профиль ребёнка — и вся подготовка будет как на ладони."
-              : `У вас ${children.length} ${pluralizeRu(children.length, ["ребёнок", "ребёнка", "детей"])} в центре.`}
+              ? a.noChildrenLead
+              : tpl(a.childrenLead, { children: f.count(children.length, t.units.child) })}
           </p>
         </div>
         {children.length > 0 && <ChildFormDialog triggerVariant="outline" />}
@@ -53,11 +61,8 @@ export default async function AccountOverviewPage() {
             <Users aria-hidden className="h-6 w-6 text-brand-ink" />
           </span>
           <div>
-            <p className="font-display text-lg font-semibold text-ink">Начните с профиля ребёнка</p>
-            <p className="mt-1 max-w-md text-sm text-muted">
-              После этого запись на курс займёт два шага, а баллы за экзамены будут появляться здесь
-              сами.
-            </p>
+            <p className="font-display text-lg font-semibold text-ink">{a.startTitle}</p>
+            <p className="mt-1 max-w-md text-sm text-muted">{a.startText}</p>
           </div>
           <ChildFormDialog />
         </div>
@@ -65,12 +70,12 @@ export default async function AccountOverviewPage() {
         <>
           <section>
             <div className="flex items-center justify-between gap-3">
-              <h2 className="font-display text-lg font-semibold text-ink">Дети</h2>
+              <h2 className="font-display text-lg font-semibold text-ink">{a.children}</h2>
               <Link
                 href="/account/children"
                 className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink transition-colors hover:underline"
               >
-                Все профили <ArrowRight aria-hidden className="h-3.5 w-3.5" />
+                {a.allProfiles} <ArrowRight aria-hidden className="h-3.5 w-3.5" />
               </Link>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -80,14 +85,14 @@ export default async function AccountOverviewPage() {
             </div>
           </section>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Активные курсы" value={String(activeCount)} />
-            <StatCard label="Всего записей" value={String(enrollments.length)} />
-            <StatCard label="Детей с результатами" value={`${examCount} из ${children.length}`} />
-          </div>
+          <dl className="grid gap-4 sm:grid-cols-3">
+            <StatCard label={a.activeCourses} value={String(activeCount)} />
+            <StatCard label={a.totalEnrollments} value={String(totalCount)} />
+            <StatCard label={a.withResults} value={`${examCount} ${t.common.of} ${children.length}`} />
+          </dl>
 
           <section>
-            <h2 className="font-display text-lg font-semibold text-ink">Ближайшие занятия</h2>
+            <h2 className="font-display text-lg font-semibold text-ink">{a.upcoming}</h2>
             <div className="mt-4">
               <ScheduleTimeline items={upcoming} showChildName />
             </div>
@@ -97,9 +102,9 @@ export default async function AccountOverviewPage() {
 
       <section>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold text-ink">Последние записи</h2>
+          <h2 className="font-display text-lg font-semibold text-ink">{a.recentEnrollments}</h2>
           <Button asChild variant="outline" size="sm">
-            <Link href="/courses">Записать ребёнка</Link>
+            <Link href="/courses">{a.enrollChild}</Link>
           </Button>
         </div>
         <div className="mt-4">
@@ -112,9 +117,9 @@ export default async function AccountOverviewPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.35rem] border border-border bg-surface p-5 shadow-glow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-accent-deep">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 font-display text-3xl font-bold tracking-[-0.05em] text-ink">{value}</p>
+    <div className="relative flex flex-col-reverse overflow-hidden rounded-[1.35rem] border border-border bg-surface p-5 shadow-glow-sm before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-accent-deep">
+      <dd className="mt-2 font-display text-3xl font-bold tracking-[-0.05em] text-ink">{value}</dd>
+      <dt className="text-sm text-muted">{label}</dt>
     </div>
   );
 }
