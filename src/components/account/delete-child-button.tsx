@@ -14,6 +14,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useI18n } from "@/components/i18n-provider";
+import { tpl } from "@/lib/i18n/format";
 
 /**
  * Deleting a child profile is confirmed in a dialog rather than a native
@@ -21,6 +23,8 @@ import {
  * keyboard-navigable.
  */
 export function DeleteChildButton({ childId, name }: { childId: string; name: string }) {
+  const { t } = useI18n();
+  const d = t.account.deleteChild;
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
@@ -32,7 +36,7 @@ export function DeleteChildButton({ childId, name }: { childId: string; name: st
         toast.error(result.error);
         return;
       }
-      toast.success("Профиль удалён");
+      toast.success(d.deleted);
       setOpen(false);
       router.push("/account/children");
     });
@@ -41,16 +45,15 @@ export function DeleteChildButton({ childId, name }: { childId: string; name: st
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label={`Удалить профиль: ${name}`}>
+        <Button variant="ghost" size="sm" aria-label={tpl(d.label, { name })}>
           <Trash2 aria-hidden className="h-3.5 w-3.5" />
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Удалить профиль {name}?</DialogTitle>
+          <DialogTitle>{tpl(d.title, { name })}</DialogTitle>
           <DialogDescription>
-            История экзаменов останется в центре, но исчезнет из вашего кабинета. Отменить это
-            действие нельзя.
+            {d.text}
           </DialogDescription>
         </DialogHeader>
         <div className="mt-2 flex gap-3">
@@ -60,7 +63,7 @@ export function DeleteChildButton({ childId, name }: { childId: string; name: st
             onClick={() => setOpen(false)}
             disabled={isPending}
           >
-            Отмена
+            {t.common.cancel}
           </Button>
           <Button
             variant="destructive"
@@ -68,7 +71,7 @@ export function DeleteChildButton({ childId, name }: { childId: string; name: st
             onClick={handleDelete}
             disabled={isPending}
           >
-            {isPending ? "Удаляем..." : "Удалить"}
+            {isPending ? t.common.deleting : t.common.delete}
           </Button>
         </div>
       </DialogContent>
