@@ -12,6 +12,8 @@ import {
 } from "recharts";
 import { BRAND_SERIES_COLOR, CHART_AXIS_COLOR, CHART_GRID_COLOR } from "@/lib/chart-colors";
 import type { ExamPoint } from "@/lib/children-data";
+import { tpl } from "@/lib/i18n/format";
+import { useI18n } from "@/components/i18n-provider";
 
 /**
  * A child's exam history as a percentage of the maximum score, so exams marked
@@ -25,10 +27,9 @@ export function ExamProgressChart({
   exams: ExamPoint[];
   averagePercent: number | null;
 }) {
+  const { t, f } = useI18n();
   const data = exams.map((exam) => ({
-    label: new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "short" }).format(
-      new Date(exam.examDate)
-    ),
+    label: f.shortDate(exam.examDate),
     percent: exam.percent,
     examName: exam.examName,
     score: exam.score,
@@ -68,7 +69,7 @@ export function ExamProgressChart({
             stroke={CHART_AXIS_COLOR}
             strokeDasharray="4 4"
             label={{
-              value: `среднее ${averagePercent}%`,
+              value: tpl(t.account.average, { value: averagePercent }),
               position: "insideTopRight",
               fill: CHART_AXIS_COLOR,
               fontSize: 11,
@@ -79,7 +80,7 @@ export function ExamProgressChart({
           cursor={{ stroke: CHART_GRID_COLOR }}
           contentStyle={{ borderRadius: 12, border: `1px solid ${CHART_GRID_COLOR}`, fontSize: 13 }}
           formatter={(value, _name, item) => [
-            `${value}% · ${item.payload.score} из ${item.payload.maxScore}`,
+            `${value}% · ${tpl(t.format.scoreOf, { score: item.payload.score, max: item.payload.maxScore })}`,
             item.payload.examName,
           ]}
         />
