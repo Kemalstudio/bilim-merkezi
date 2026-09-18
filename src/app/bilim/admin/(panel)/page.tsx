@@ -12,26 +12,38 @@ import { getCurrentUser } from "@/lib/rbac";
 export const metadata: Metadata = { title: "Дашборд" };
 
 export default async function AdminDashboardPage() {
-  const [user, studentCount, enrollments, payments, popularCourses] = await Promise.all([
-    getCurrentUser(),
-    prisma.user.count({ where: { role: "STUDENT" } }),
-    prisma.enrollment.findMany({ include: { course: { include: { category: true } } } }),
-    prisma.payment.findMany({
-      where: { status: "SUCCEEDED" },
-      select: { amount: true, createdAt: true },
-    }),
-    prisma.course.findMany({
-      select: { title: true, _count: { select: { enrollments: true } } },
-      orderBy: { enrollments: { _count: "desc" } },
-      take: 6,
-    }),
-  ]);
-
-  const activeEnrollments = enrollments.filter((e) => e.status === "ACTIVE");
-  const totalRevenue = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-  const conversionRate = studentCount > 0 ? (activeEnrollments.length / studentCount) * 100 : 0;
-
   const now = new Date();
+  const windowStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+
+  // Counted in the database: the dashboard should not load every enrollment and payment.
+  const [user, studentCount, enrollmentCount, activeCount, revenue, payments, byCourse, popularCourses] =
+    await Promise.all([
+      getCurrentUser(),
+      prisma.user.count({ where: { role: "STUDENT" } }),
+      prisma.enrollment.count(),
+      prisma.enrollment.count({ where: { status: "ACTIVE" } }),
+      prisma.payment.aggregate({ where: { status: "SUCCEEDED" }, _sum: { amount: true } }),
+      prisma.payment.findMany({
+        where: { status: "SUCCEEDED", createdAt: { gte: windowStart } },
+        select: { amount: true, createdAt: true },
+      }),
+      prisma.enrollment.groupBy({ by: ["courseId"], _count: { _all: true } }),
+      prisma.course.findMany({
+        select: { title: true, _count: { select: { enrollments: true } } },
+        orderBy: { enrollments: { _count: "desc" } },
+        take: 6,
+      }),
+    ]);
+
+  const totalRevenue = Number(revenue._sum.amount ?? 0);
+  const conversionRate = studentCount > 0 ? (activeCount / studentCount) * 100 : 0;
+
+  const courseCategories = await prisma.course.findMany({
+    where: { id: { in: byCourse.map((row) => row.courseId) } },
+    select: { id: true, category: { select: { name: true } } },
+  });
+  const categoryOf = new Map(courseCategories.map((course) => [course.id, course.category.name]));
+
   const monthOrder: string[] = [];
   const monthBuckets: Record<string, number> = {};
   for (let i = 5; i >= 0; i--) {
@@ -51,9 +63,9 @@ export default async function AdminDashboardPage() {
   const revenueData = monthOrder.map((month) => ({ month, revenue: monthBuckets[month] }));
 
   const categoryBuckets = new Map<string, number>();
-  for (const enrollment of enrollments) {
-    const name = enrollment.course.category.name;
-    categoryBuckets.set(name, (categoryBuckets.get(name) ?? 0) + 1);
+  for (const row of byCourse) {
+    const name = categoryOf.get(row.courseId) ?? "Без категории";
+    categoryBuckets.set(name, (categoryBuckets.get(name) ?? 0) + row._count._all);
   }
   const categoryData = Array.from(categoryBuckets.entries()).map(([name, value]) => ({ name, value }));
 
@@ -69,14 +81,14 @@ export default async function AdminDashboardPage() {
       <h2 className="-mb-2 font-display text-xl font-bold tracking-[-0.03em] text-ink">Ключевые показатели</h2>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Студентов" value={String(studentCount)} icon={Users} />
-        <KpiCard label="Записей на курсы" value={String(enrollments.length)} icon={GraduationCap} />
+        <KpiCard label="Аккаунтов родителей" value={String(studentCount)} icon={Users} />
+        <KpiCard label="Записей на курсы" value={String(enrollmentCount)} icon={GraduationCap} />
         <KpiCard label="Доход" value={formatCurrency(totalRevenue)} icon={BadgeDollarSign} />
         <KpiCard
           label="Конверсия"
           value={`${conversionRate.toFixed(1)}%`}
           icon={TrendingUp}
-          hint="активных записей на студента"
+          hint="активных записей на аккаунт"
         />
       </div>
 
