@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useI18n } from "@/components/i18n-provider";
 
 export type ChildFormValues = {
   id: string;
@@ -34,6 +35,8 @@ export function ChildFormDialog({
   child?: ChildFormValues;
   triggerVariant?: "primary" | "outline" | "subtle";
 }) {
+  const { t } = useI18n();
+  const c = t.account.childForm;
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const isEdit = Boolean(child);
@@ -51,7 +54,7 @@ export function ChildFormDialog({
         toast.error(result.error);
         return;
       }
-      toast.success(isEdit ? "Профиль обновлён" : "Профиль ребёнка добавлен");
+      toast.success(isEdit ? c.updated : c.added);
       setOpen(false);
     });
   }
@@ -61,37 +64,39 @@ export function ChildFormDialog({
       <DialogTrigger asChild>
         {isEdit ? (
           <Button variant={triggerVariant} size="sm">
-            <Pencil aria-hidden className="h-3.5 w-3.5" /> Изменить
+            <Pencil aria-hidden className="h-3.5 w-3.5" /> {t.common.change}
           </Button>
         ) : (
           <Button variant={triggerVariant}>
-            <Plus aria-hidden className="h-4 w-4" /> Добавить ребёнка
+            <Plus aria-hidden className="h-4 w-4" /> {c.add}
           </Button>
         )}
       </DialogTrigger>
 
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Профиль ребёнка" : "Новый профиль"}</DialogTitle>
+          <DialogTitle>{isEdit ? c.editTitle : c.newTitle}</DialogTitle>
           <DialogDescription>
-            Эти данные видите только вы. Они подставятся при записи на курс.
+            {c.privacy}
           </DialogDescription>
         </DialogHeader>
 
         <form action={handleSubmit} className="flex flex-col gap-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="lastName">Фамилия</Label>
+              <Label htmlFor="lastName">{t.enroll.lastName}</Label>
               <Input
                 id="lastName"
                 name="lastName"
                 defaultValue={child?.lastName}
                 required
+                minLength={2}
+                autoComplete="off"
                 disabled={isPending}
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="firstName">Имя</Label>
+              <Label htmlFor="firstName">{t.enroll.firstName}</Label>
               <Input
                 id="firstName"
                 name="firstName"
@@ -104,7 +109,7 @@ export function ChildFormDialog({
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="birthDate">Дата рождения</Label>
+              <Label htmlFor="birthDate">{t.enroll.birthDate}</Label>
               <Input
                 id="birthDate"
                 name="birthDate"
@@ -115,7 +120,7 @@ export function ChildFormDialog({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="grade">Класс</Label>
+              <Label htmlFor="grade">{t.enroll.grade}</Label>
               <Input
                 id="grade"
                 name="grade"
@@ -130,20 +135,20 @@ export function ChildFormDialog({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="notes">Заметка для преподавателя</Label>
+            <Label htmlFor="notes">{c.notes}</Label>
             <Textarea
               id="notes"
               name="notes"
               rows={3}
               maxLength={500}
-              placeholder="Например: готовимся к экзамену по математике в мае"
+              placeholder={c.notesPlaceholder}
               defaultValue={child?.notes ?? ""}
               disabled={isPending}
             />
           </div>
 
           <Button type="submit" size="lg" className="mt-1" disabled={isPending}>
-            {isPending ? "Сохраняем..." : isEdit ? "Сохранить" : "Добавить профиль"}
+            {isPending ? t.common.saving : isEdit ? t.common.save : c.submitNew}
           </Button>
         </form>
       </DialogContent>
