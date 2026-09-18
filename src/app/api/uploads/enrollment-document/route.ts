@@ -1,37 +1,34 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { auth } from "@/lib/auth";
+import { rateLimit } from "@/lib/rate-limit";
+import { receiveUpload } from "@/lib/uploads";
+import { saveUpload } from "@/lib/storage";
+import { getI18n } from "@/lib/i18n/server";
 
-// Stored outside `public/` — enrollment documents (birth certificates, IDs)
-// are sensitive and must never be reachable by a guessable public URL.
-// They're served only through /api/documents/[key], gated on ownership or admin role.
-const PRIVATE_UPLOADS_DIR = path.join(process.cwd(), "private-uploads", "enrollment-documents");
+// Enrollment documents (birth certificates, IDs) are sensitive: they go to the private
+// "documents" namespace and are served only through /api/documents/[key], gated on ownership
+// or staff role — never by a guessable public URL.
+const DOCUMENT_TYPES = ["pdf", "png", "jpg", "webp"] as const;
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const [session, { t }] = await Promise.all([auth(), getI18n()]);
   if (!session?.user) {
-    return NextResponse.json({ error: "Требуется вход" }, { status: 401 });
+    return NextResponse.json({ error: t.errors.signInRequired }, { status: 401 });
+  }
+  // Any signed-in parent can upload, so storage use is capped per account.
+  if (!(await rateLimit(`document-upload:${session.user.id}`, 10, 10 * 60_000)).success) {
+    return NextResponse.json({ error: t.errors.uploadTooMany }, { status: 429 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Файл не найден" }, { status: 400 });
-  }
-  if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
-    return NextResponse.json({ error: "Допустимы изображения или PDF" }, { status: 400 });
-  }
-  if (file.size > 8 * 1024 * 1024) {
-    return NextResponse.json({ error: "Максимальный размер файла — 8 МБ" }, { status: 400 });
-  }
+  const upload = await receiveUpload(request, {
+    allowed: DOCUMENT_TYPES,
+    maxBytes: 8 * 1024 * 1024,
+    typeError: t.errors.uploadDocumentType,
+    sizeError: t.errors.uploadDocumentSize,
+    missingError: t.errors.uploadMissing,
+  });
+  if (!upload.ok) return upload.response;
 
-  await mkdir(PRIVATE_UPLOADS_DIR, { recursive: true });
-
-  const ext = file.type === "application/pdf" ? "pdf" : file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const key = `${crypto.randomUUID()}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(PRIVATE_UPLOADS_DIR, key), bytes);
-
-  return NextResponse.json({ key });
+  const { file } = await saveUpload("documents", upload.file.bytes, upload.file.type.ext, upload.file.type.mime);
+  return NextResponse.json({ key: file });
 }
