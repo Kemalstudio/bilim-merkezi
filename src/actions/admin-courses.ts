@@ -8,6 +8,7 @@ import { courseSchema, type CourseInput } from "@/lib/validations/course";
 import { logAction } from "@/lib/audit";
 import { slugify } from "@/lib/utils";
 import { estimateDurationHours } from "@/lib/course-schedule";
+import { invalidateKnowledge } from "@/lib/ai/knowledge";
 
 export type CourseActionState = { error?: string } | undefined;
 
@@ -132,6 +133,7 @@ export async function createCourseAction(
   await logAction(admin.id, "course.created", "course", course.id, { title: course.title });
   revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
+  invalidateKnowledge();
   redirect("/bilim/admin/courses");
 }
 
@@ -159,6 +161,7 @@ export async function updateCourseAction(
   await logAction(admin.id, "course.updated", "course", courseId);
   revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
+  invalidateKnowledge();
   redirect("/bilim/admin/courses");
 }
 
@@ -176,6 +179,7 @@ export async function deleteCourseAction(courseId: string): Promise<CourseAction
   await logAction(admin.id, "course.deleted", "course", courseId);
   revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
+  invalidateKnowledge();
 }
 
 export async function toggleCoursePublishedAction(courseId: string, published: boolean) {
@@ -184,4 +188,5 @@ export async function toggleCoursePublishedAction(courseId: string, published: b
   await logAction(admin.id, published ? "course.published" : "course.unpublished", "course", courseId);
   revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
+  invalidateKnowledge();
 }
