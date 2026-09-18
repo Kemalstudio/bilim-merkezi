@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { headers } from "next/headers";
 import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-import { logAction } from "@/lib/audit";
+import { expireCheckoutSession, fulfillCheckoutSession } from "@/lib/checkout";
 
 export async function POST(request: Request) {
   const body = await request.text();
@@ -22,55 +21,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const enrollmentId = session.metadata?.enrollmentId;
-    const promoCodeId = session.metadata?.promoCodeId;
-
-    if (enrollmentId) {
-      const enrollment = await prisma.enrollment.update({
-        where: { id: enrollmentId },
-        data: { status: "ACTIVE" },
-      });
-
-      const payment = await prisma.payment.update({
-        where: { enrollmentId },
-        data: {
-          status: "SUCCEEDED",
-          stripePaymentIntentId:
-            typeof session.payment_intent === "string"
-              ? session.payment_intent
-              : session.payment_intent?.id,
-        },
-      });
-
-      if (promoCodeId) {
-        await prisma.$transaction([
-          prisma.promoRedemption.create({
-            data: { promoCodeId, userId: enrollment.userId, paymentId: payment.id },
-          }),
-          prisma.promoCode.update({
-            where: { id: promoCodeId },
-            data: { usedCount: { increment: 1 } },
-          }),
-        ]);
-      }
-
-      await logAction(enrollment.userId, "payment.succeeded", "enrollment", enrollment.id, {
-        stripeCheckoutId: session.id,
-        ...(promoCodeId ? { promoCodeId } : {}),
-      });
+  try {
+    switch (event.type) {
+      // Card payments are paid on completion; delayed methods report later via async_payment_*.
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded":
+        await fulfillCheckoutSession(event.data.object);
+        break;
+      case "checkout.session.expired":
+      case "checkout.session.async_payment_failed":
+        await expireCheckoutSession(event.data.object);
+        break;
     }
-  }
-
-  if (event.type === "checkout.session.expired") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    const enrollmentId = session.metadata?.enrollmentId;
-    if (enrollmentId) {
-      await prisma.payment
-        .update({ where: { enrollmentId }, data: { status: "FAILED" } })
-        .catch(() => null);
-    }
+  } catch (error) {
+    // A 500 makes Stripe retry, which is what we want for transient database errors.
+    console.error(`Stripe webhook ${event.type} (${event.id}) failed`, error);
+    return NextResponse.json({ error: "Processing failed" }, { status: 500 });
   }
 
   return NextResponse.json({ received: true });
