@@ -1,16 +1,9 @@
 import { NextResponse } from "next/server";
-import { writeFile, mkdir } from "node:fs/promises";
-import path from "node:path";
 import { auth } from "@/lib/auth";
+import { receiveUpload } from "@/lib/uploads";
+import { saveUpload } from "@/lib/storage";
 
-const ALLOWED_TYPES = new Set([
-  "application/pdf",
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/zip",
-  "image/png",
-  "image/jpeg",
-]);
+const LIBRARY_TYPES = ["pdf", "doc", "docx", "zip", "png", "jpg"] as const;
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -19,29 +12,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Недостаточно прав" }, { status: 403 });
   }
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "Файл не найден" }, { status: 400 });
-  }
-  if (!ALLOWED_TYPES.has(file.type)) {
-    return NextResponse.json({ error: "Недопустимый тип файла" }, { status: 400 });
-  }
-  if (file.size > 25 * 1024 * 1024) {
-    return NextResponse.json({ error: "Максимальный размер файла — 25 МБ" }, { status: 400 });
-  }
-
-  const uploadsDir = path.join(process.cwd(), "public", "uploads", "library");
-  await mkdir(uploadsDir, { recursive: true });
-
-  const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "pdf";
-  const filename = `${crypto.randomUUID()}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await writeFile(path.join(uploadsDir, filename), bytes);
-
-  return NextResponse.json({
-    url: `/uploads/library/${filename}`,
-    fileType: ext,
-    fileSizeKb: Math.round(file.size / 1024),
+  const upload = await receiveUpload(request, {
+    allowed: LIBRARY_TYPES,
+    maxBytes: 25 * 1024 * 1024,
+    typeError: "Допустимы PDF, DOC, DOCX, ZIP, PNG или JPG",
+    sizeError: "Максимальный размер файла — 25 МБ",
+    missingError: "Файл не найден",
   });
+  if (!upload.ok) return upload.response;
+
+  const { type, bytes, size } = upload.file;
+  const { url } = await saveUpload("library", bytes, type.ext, type.mime);
+  return NextResponse.json({ url, fileType: type.ext, fileSizeKb: Math.round(size / 1024) });
 }
