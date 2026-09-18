@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { updateUserRoleAction } from "@/actions/admin-users";
 import { formatDate, initials } from "@/lib/utils";
+import { realEmail } from "@/lib/phone";
 
 type UserRow = {
   id: string;
@@ -62,7 +63,7 @@ export function UserTable({ users, currentUserId }: { users: UserRow[]; currentU
                 </Avatar>
                 <div>
                   <p className="font-semibold text-ink">{user.name}</p>
-                  <p className="text-xs text-muted">{user.email}</p>
+                  <p className="text-xs text-muted">{realEmail(user.email) ?? "вход по телефону"}</p>
                 </div>
               </div>
             </TableCell>
