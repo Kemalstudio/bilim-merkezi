@@ -19,6 +19,7 @@ export default async function AdminCoursesPage() {
     title: c.title,
     category: { name: c.category.name },
     price: c.price.toString(),
+    discountPrice: c.discountPrice?.toString() ?? null,
     published: c.published,
     enrollmentCount: c._count.enrollments,
   }));
