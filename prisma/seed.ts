@@ -55,7 +55,7 @@ const courses: SeedCourse[] = [
     categorySlug: "programming",
     level: "BEGINNER",
     durationHours: 40,
-    price: 199,
+    price: 4100,
     summary: "Постройте первые сайты и разберитесь, как устроен веб — от вёрстки до интерактивности.",
     description:
       "Курс для тех, кто никогда не писал код. Вы пройдёте путь от структуры HTML-документа до интерактивных страниц на JavaScript, разберётесь с адаптивной вёрсткой и опубликуете три собственных проекта в портфолио.",
@@ -96,8 +96,8 @@ const courses: SeedCourse[] = [
     categorySlug: "programming",
     level: "INTERMEDIATE",
     durationHours: 32,
-    price: 249,
-    discountPrice: 199,
+    price: 5100,
+    discountPrice: 4100,
     summary: "Соберите полноценное приложение на React и Next.js с серверным рендерингом и базой данных.",
     description:
       "Практический курс о современном фронтенде: компоненты, состояние, роутинг, серверные компоненты Next.js и подключение к базе данных. В конце — готовое приложение в вашем портфолио.",
@@ -138,7 +138,7 @@ const courses: SeedCourse[] = [
     categorySlug: "programming",
     level: "INTERMEDIATE",
     durationHours: 36,
-    price: 229,
+    price: 4700,
     summary: "Научитесь обрабатывать, визуализировать и анализировать данные с помощью Python.",
     description:
       "От основ Python до работы с pandas, numpy и построения графиков в matplotlib. Курс построен на реальных наборах данных и заканчивается собственным аналитическим проектом.",
@@ -175,7 +175,7 @@ const courses: SeedCourse[] = [
     categorySlug: "design",
     level: "BEGINNER",
     durationHours: 28,
-    price: 179,
+    price: 3700,
     summary: "Освойте процесс дизайна интерфейсов — от исследования пользователей до кликабельного прототипа.",
     description:
       "Пошаговый курс по UI/UX-дизайну: вы изучите принципы пользовательского опыта, основы визуального дизайна и соберёте кликабельный прототип мобильного приложения в Figma.",
@@ -213,7 +213,7 @@ const courses: SeedCourse[] = [
     categorySlug: "design",
     level: "INTERMEDIATE",
     durationHours: 24,
-    price: 159,
+    price: 3300,
     summary: "Создавайте логотипы, фирменный стиль и графику для реальных брендов.",
     description:
       "Курс о том, как разработать айдентику бренда с нуля: от концепции и логотипа до брендбука и оформления соцсетей.",
@@ -243,7 +243,7 @@ const courses: SeedCourse[] = [
     categorySlug: "marketing",
     level: "BEGINNER",
     durationHours: 20,
-    price: 149,
+    price: 3100,
     summary: "Запускайте эффективные рекламные кампании и анализируйте результаты.",
     description:
       "Практический курс по digital-маркетингу: настройка рекламных кабинетов, таргетинг, аналитика и оптимизация бюджета. Вы запустите свою первую кампанию уже во время обучения.",
@@ -278,7 +278,7 @@ const courses: SeedCourse[] = [
     categorySlug: "marketing",
     level: "BEGINNER",
     durationHours: 18,
-    price: 129,
+    price: 2700,
     summary: "Ведите соцсети бренда системно: контент-план, визуал и работа с аудиторией.",
     description:
       "Вы научитесь строить контент-стратегию, создавать визуально привлекательные публикации и общаться с аудиторией так, чтобы она превращалась в клиентов.",
@@ -305,7 +305,7 @@ const courses: SeedCourse[] = [
     categorySlug: "languages",
     level: "INTERMEDIATE",
     durationHours: 45,
-    price: 189,
+    price: 3900,
     summary: "Уверенно вести переписку, переговоры и презентации на английском языке.",
     description:
       "Курс делового английского: деловая переписка, телефонные и видеозвонки, презентации и переговоры. Много разговорной практики и реальных кейсов.",
@@ -339,7 +339,7 @@ const courses: SeedCourse[] = [
     categorySlug: "business",
     level: "BEGINNER",
     durationHours: 22,
-    price: 169,
+    price: 3500,
     summary: "От бизнес-идеи до финансовой модели — постройте фундамент своего дела.",
     description:
       "Практический курс о запуске бизнеса: проверка идеи, финансовое планирование, юридические основы и первые шаги в привлечении клиентов.",
@@ -370,7 +370,7 @@ const courses: SeedCourse[] = [
     categorySlug: "growth",
     level: "BEGINNER",
     durationHours: 16,
-    price: 99,
+    price: 2100,
     summary: "Избавьтесь от страха сцены и научитесь убедительно доносить свои идеи.",
     description:
       "Курс о том, как готовить и произносить выступления, работать с волнением, удерживать внимание аудитории и отвечать на сложные вопросы.",
