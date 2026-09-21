@@ -57,7 +57,7 @@ export function PromoCodeForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="discountValue">{discountType === "PERCENT" ? "Скидка, %" : "Скидка, $"}</Label>
+        <Label htmlFor="discountValue">{discountType === "PERCENT" ? "Скидка, %" : "Скидка, TMT"}</Label>
         <Input
           id="discountValue"
           name="discountValue"
