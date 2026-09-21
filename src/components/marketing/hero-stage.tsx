@@ -67,9 +67,13 @@ export function HeroStage({ children, enabled = true }: { children: ReactNode; e
       // The headline is left-aligned, so it is centred on its longest line rather than its box.
       const titleCentreX = () => scene.offsetWidth / 2 - (title.offsetLeft + longestLineWidth(title) / 2);
 
-      // Explicit starting filters, so blur tweens have numbers to interpolate from.
-      gsap.set([title, ...asides], { filter: "blur(0px)" });
+      // No filter/blur tweens here: a scrubbed blur on the large headline re-rasterised it on
+      // every scroll frame and made the pinned scene stutter. Opacity, transform and scale
+      // run on the compositor and give the same "out of focus" read.
       gsap.set(visual, { transformPerspective: 1200, transformOrigin: "50% 60%" });
+
+      // Promoted for the length of the pin only, so the moving pieces stay on their own layers.
+      gsap.set([title, visual, ...asides, ...stats], { willChange: "transform, opacity" });
 
       gsap
         .timeline({
@@ -87,8 +91,8 @@ export function HeroStage({ children, enabled = true }: { children: ReactNode; e
           },
         })
         // 1 · the copy drifts out of focus; the card glides to the centre
-        .to(asides, { x: -140, autoAlpha: 0, filter: "blur(6px)", duration: 0.28, stagger: 0.03, ease: "power2.in" }, 0)
-        .to(title, { x: 0, y: -90, autoAlpha: 0, filter: "blur(8px)", duration: 0.3, ease: "power2.in" }, 0.04)
+        .to(asides, { x: -140, autoAlpha: 0, duration: 0.28, stagger: 0.03, ease: "power2.in" }, 0)
+        .to(title, { x: 0, y: -90, scale: 0.97, autoAlpha: 0, duration: 0.3, ease: "power2.in" }, 0.04)
         .to(stats, { y: 90, autoAlpha: 0, duration: 0.2, ease: "power1.in" }, 0)
         .to(visual, { x: () => centreX(visual), scale: 1.12, duration: 0.42, ease: "power2.inOut" }, 0.06)
         // A slight bank into the move and back out of it, as if the card had some weight.
@@ -115,12 +119,11 @@ export function HeroStage({ children, enabled = true }: { children: ReactNode; e
         .to(visual, { y: 170, rotationX: 38, scale: 0.8, autoAlpha: 0, duration: 0.24, ease: "power2.in" }, 0.72)
         .fromTo(
           title,
-          { x: titleCentreX, y: () => centreY(title) + 90, scale: 0.94, filter: "blur(14px)" },
+          { x: titleCentreX, y: () => centreY(title) + 90, scale: 0.94 },
           {
             y: () => centreY(title),
             scale: 1.22,
             autoAlpha: 1,
-            filter: "blur(0px)",
             duration: 0.32,
             ease: "power3.out",
             immediateRender: false,
@@ -131,7 +134,10 @@ export function HeroStage({ children, enabled = true }: { children: ReactNode; e
         // A short hold on the final frame before the pin releases.
         .to({}, { duration: 0.12 });
 
-      return () => report?.reset();
+      return () => {
+        report?.reset();
+        gsap.set([title, visual, ...asides, ...stats], { clearProps: "willChange" });
+      };
     });
 
     return () => mm.revert();
