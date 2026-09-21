@@ -23,6 +23,7 @@ export function toCourseCardData(course: CourseWithRelations): CourseCardData {
     durationHours: course.durationHours,
     startDate: course.startDate,
     instructorName: course.instructorName,
+    instructorAvatar: course.instructorAvatar,
     category: { name: course.category.name, slug: course.category.slug },
     avgRating,
     reviewCount,
