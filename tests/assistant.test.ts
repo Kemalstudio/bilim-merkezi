@@ -5,7 +5,7 @@ import { stem, tokens } from "@/lib/ai/text";
 import { allowedNumbers, sanitizeAnswer, unsupportedNumbers } from "@/lib/ai/guard";
 import { buildContext, cardsFor, composeLocalAnswer, planAnswer, systemPrompt, type KnowledgeView } from "@/lib/ai/answer";
 import { composeProgress, computeProgress } from "@/lib/ai/insight";
-import type { CourseFact, FaqFact } from "@/lib/ai/knowledge";
+import type { ArticleFact, CourseFact, FaqFact } from "@/lib/ai/knowledge";
 import { createFormatter } from "@/lib/i18n/format";
 import { getUiDictionary } from "@/lib/i18n/ui";
 
@@ -219,4 +219,85 @@ test("progress summary uses only computed numbers", () => {
   assert.match(text, /на 16 п\.п\. выше/);
   assert.match(text, /Входной тест/);
   assert.equal(computeProgress([]), null);
+});
+
+/* ── questions about the centre ───────────────────────────────────────────────────── */
+
+const ARTICLES: ArticleFact[] = [
+  {
+    id: "method",
+    title: "Не просто занятия. Управляемая подготовка.",
+    text: "• Начинаем с диагностики.\n• Собираем личный маршрут.\n• Тренируем формат экзамена.",
+  },
+  { id: "teachers", title: "Рядом взрослый, который умеет объяснять", text: "Преподаватели знают экзаменационный формат." },
+  { id: "results", title: "Цифры, а не обещания", text: "Показываем реальные баллы учеников на экзаменах." },
+];
+
+const withArticles: KnowledgeView = {
+  ...knowledge,
+  articles: ARTICLES,
+  articleIndex: buildIndex(ARTICLES, (item) => [
+    [item.title, 3],
+    [item.text, 1],
+  ]),
+};
+
+const localAnswer = (text: string, view: KnowledgeView = withArticles) =>
+  composeLocalAnswer(planAnswer(view, user(text)), view, ru, fRu);
+
+test("parseQuery recognises questions about the centre", () => {
+  assert.ok(parseQuery("Какие курсы у вас есть?").intents.includes("catalog"));
+  assert.ok(parseQuery("What courses do you offer?").intents.includes("catalog"));
+  assert.ok(parseQuery("Haýsy kurslaryňyz bar?").intents.includes("catalog"));
+  assert.ok(parseQuery("Кто преподаёт?").intents.includes("teachers"));
+  assert.ok(parseQuery("Как проходят занятия?").intents.includes("method"));
+  assert.ok(parseQuery("Выдаёте сертификат?").intents.includes("certificate"));
+  assert.ok(parseQuery("Сколько детей в группе?").intents.includes("groupSize"));
+  assert.ok(parseQuery("С какого возраста принимаете?").intents.includes("ageRange"));
+  assert.deepEqual(parseQuery("Привет").intents, ["greeting"]);
+  assert.deepEqual(parseQuery("Спасибо!").intents, ["thanks"]);
+  // "Приветствую" is not "привет" + something else, and a greeting mid-sentence is not small talk.
+  assert.ok(!parseQuery("Хочу передать привет").intents.includes("greeting"));
+});
+
+test("small talk gets a short reply, not a course list", () => {
+  assert.equal(localAnswer("Здравствуйте"), ru.assistant.fallback.greeting);
+  assert.equal(localAnswer("спасибо"), ru.assistant.fallback.thanks);
+});
+
+test("the catalogue question lists every category with its courses", () => {
+  const text = localAnswer("Какие курсы у вас есть?");
+  assert.match(text, /курсов: 6/);
+  for (const category of ["Математика", "Иностранные языки", "Программирование", "Творчество и досуг"]) {
+    assert.ok(text.includes(category), `missing ${category}`);
+  }
+  assert.ok(text.includes("Шахматы для начинающих"));
+});
+
+test("a subject in the question beats the catalogue overview", () => {
+  const plan = planAnswer(withArticles, user("Какие курсы английского есть?"));
+  assert.deepEqual(plan.courses.map((item) => item.slug), ["english-a1"]);
+  assert.ok(!composeLocalAnswer(plan, withArticles, ru, fRu).includes("Творчество и досуг"));
+});
+
+test("method and teacher questions are answered from the site's articles", () => {
+  assert.match(localAnswer("Как проходят занятия?"), /диагностики/);
+  const teachers = localAnswer("Кто у вас преподаватели?");
+  assert.match(teachers, /умеет объяснять/);
+  assert.ok(teachers.includes(knowledge.contacts.phone));
+});
+
+test("age range and certificates come from the course data", () => {
+  assert.match(localAnswer("С какого возраста принимаете?"), /5–17/);
+  assert.match(localAnswer("Выдаёте сертификат?"), /6 из 6/);
+  const drawing = localAnswer("Есть сертификат после рисования?");
+  assert.match(drawing, /Рисование и живопись/);
+});
+
+test("group size answers use the real group sizes", () => {
+  assert.match(localAnswer("Сколько детей в группе?"), /10 учеников/);
+});
+
+test("answers still work without articles", () => {
+  assert.match(localAnswer("Как проходят занятия?", knowledge), /\S/);
 });
