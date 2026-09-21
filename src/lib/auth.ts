@@ -10,10 +10,24 @@ import { verifyOtpSchema } from "@/lib/validations/phone-auth";
 import { verifyOtp } from "@/lib/otp";
 import { formatPhone, placeholderEmail } from "@/lib/phone";
 import { isGoogleAuthEnabled } from "@/lib/env";
+import { headers } from "next/headers";
+import { logAction } from "@/lib/audit";
+import { isDeletedEmail } from "@/lib/account";
+import { describeDevice } from "@/lib/device";
 
 const ROLE_RECHECK_MS = 5 * 60_000;
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+async function recordSignIn(userId: string, provider: string) {
+  let agent: string | null = null;
+  try {
+    agent = (await headers()).get("user-agent");
+  } catch {
+    // Outside a request (tests, scripts) there are no headers to read.
+  }
+  await logAction(userId, "auth.signin", "user", userId, { provider, device: describeDevice(agent) });
+}
+
+export const { handlers, auth, signIn, signOut, unstable_update: updateSession } = NextAuth({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: {
@@ -117,11 +131,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account, trigger, session }) {
       const now = Date.now();
       if (user) {
         token.role = user.role;
         token.roleCheckedAt = now;
+        // Feeds "recent sign-ins" in the account settings; never allowed to break a login.
+        if (user.id) void recordSignIn(user.id, account?.provider ?? "credentials").catch(() => {});
+        return token;
+      }
+      // updateSession() from the settings page: the header shows the new name and photo at once.
+      if (trigger === "update" && session?.user) {
+        if (typeof session.user.name === "string") token.name = session.user.name;
+        if (session.user.image !== undefined) token.picture = session.user.image;
+        if (typeof session.user.email === "string") token.email = session.user.email;
         return token;
       }
       // The role lives in a long-lived token, so it is re-read now and then: a demoted
@@ -129,8 +152,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const checkedAt = typeof token.roleCheckedAt === "number" ? token.roleCheckedAt : 0;
       if (now - checkedAt > ROLE_RECHECK_MS) {
         if (!token.sub) return null;
-        const current = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true } });
-        if (!current) return null;
+        const current = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true, email: true } });
+        // A deleted account keeps its row for the books, but no session survives it — on any device.
+        if (!current || isDeletedEmail(current.email)) return null;
         token.role = current.role;
         token.roleCheckedAt = now;
       }
