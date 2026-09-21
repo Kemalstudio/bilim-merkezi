@@ -6,7 +6,8 @@ import { stripe } from "@/lib/stripe";
 import { requireUser } from "@/lib/rbac";
 import { env } from "@/lib/env";
 import { logAction } from "@/lib/audit";
-import { applyPromo, isPromoUsable, STRIPE_MIN_CHARGE } from "@/lib/pricing";
+import { applyPromo, isPromoUsable } from "@/lib/pricing";
+import { minCardChargeTmt, toStripeUsdCents } from "@/lib/money";
 import { enrollmentDocumentSchema } from "@/lib/validations/enrollment";
 import { childSchema } from "@/lib/validations/child";
 import { realEmail } from "@/lib/phone";
@@ -57,7 +58,7 @@ export async function enrollAction(courseId: string, formData: FormData): Promis
     price = applyPromo(price, promo);
   }
 
-  if (price > 0 && price < STRIPE_MIN_CHARGE) {
+  if (price > 0 && price < minCardChargeTmt()) {
     return { error: t.errors.amountTooSmall };
   }
 
@@ -116,8 +117,9 @@ export async function enrollAction(courseId: string, formData: FormData): Promis
         {
           quantity: 1,
           price_data: {
+            // Stripe does not charge in TMT: the manat price is converted at TMT_PER_USD.
             currency: "usd",
-            unit_amount: Math.round(price * 100),
+            unit_amount: toStripeUsdCents(price),
             product_data: {
               name: course.title,
               description: `${course.summary} · ${child.firstName} ${child.lastName}`,
