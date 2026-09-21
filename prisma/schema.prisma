@@ -380,11 +380,13 @@ model Child {
 }
 
 /// One-time codes for phone sign-in. The code itself is never stored — only a
-/// bcrypt hash — so a database read cannot be replayed as a login.
+/// bcrypt hash — so a database read cannot be replayed as a login. When the SMS
+/// OTP gateway is enabled it owns the code, and only its id is kept here.
 model PhoneOtp {
-  id         String     @id @default(cuid())
-  phone      String
-  codeHash   String
+  id           String     @id @default(cuid())
+  phone        String
+  codeHash     String?
+  gatewayOtpId String?
   purpose    OtpPurpose @default(LOGIN)
   expiresAt  DateTime
   attempts   Int        @default(0)
@@ -397,6 +399,8 @@ model PhoneOtp {
 
 enum OtpPurpose {
   LOGIN
+  /// Confirming the phone number of a new account before it is created.
+  REGISTER
   RECOVERY
   /// Viewing exam results from the home page without signing in.
   RESULTS
