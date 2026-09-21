@@ -12,7 +12,8 @@
     "admin:create": "tsx prisma/create-admin.ts",
     "postinstall": "node scripts/copy-lottie-wasm.mjs",
     "courses:programs": "tsx prisma/apply-course-programs.ts",
-    "courses:catalog": "tsx prisma/apply-course-catalog.ts"
+    "courses:catalog": "tsx prisma/apply-course-catalog.ts",
+    "instructors:avatars": "tsx prisma/apply-instructor-avatars.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
