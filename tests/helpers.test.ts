@@ -65,7 +65,7 @@ test("detectAllowedType enforces the allow-list", () => {
 
 test("promo codes: percent, fixed, never below zero", () => {
   assert.equal(applyPromo(120, { discountType: "PERCENT", discountValue: 10 }), 108);
-  assert.equal(applyPromo(99.99, { discountType: "PERCENT", discountValue: "15" }), 84.99);
+  assert.equal(applyPromo(1990, { discountType: "PERCENT", discountValue: "15" }), 1692);
   assert.equal(applyPromo(50, { discountType: "FIXED", discountValue: 20 }), 30);
   assert.equal(applyPromo(50, { discountType: "FIXED", discountValue: 80 }), 0);
   assert.equal(applyPromo(50, { discountType: "PERCENT", discountValue: 100 }), 0);
