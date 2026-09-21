@@ -71,7 +71,9 @@ export function planAnswer(knowledge: KnowledgeView, messages: ChatMessage[]): A
   const hasTopic = topicTokens.length > 0;
 
   const serviceOnly = latest.intents.some((intent) => intent !== "price" && intent !== "schedule") && latest.tokens.length <= 3;
-  const asksTopic = latest.tokens.length > 0;
+  // A topic is a word that actually finds a course: "английского" is one, "здравствуйте" or
+  // "с какого возраста принимаете" are not.
+  const asksTopic = latest.tokens.length > 0 && search(knowledge.courseIndex, latest.tokens).length > 0;
   // "Какие курсы есть?", "Привет", "Как проходят занятия?" are about the centre, not a subject
   // carried over from an earlier message.
   const aboutCentre = !asksTopic && latest.intents.some((intent) => CATALOGUE_INTENTS.includes(intent));
