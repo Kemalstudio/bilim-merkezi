@@ -72,7 +72,16 @@ export function Constellation({
       ease: "inOutSine",
     });
 
+    // The float loops forever and each step re-runs the SVG glow filter, so it only plays
+    // while the constellation is actually on screen.
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) floatAnim.play();
+      else floatAnim.pause();
+    });
+    observer.observe(svg);
+
     return () => {
+      observer.disconnect();
       lineAnim.revert();
       nodeAnim.revert();
       floatAnim.revert();
