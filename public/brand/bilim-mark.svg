@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <defs>
+    <linearGradient id="bilim-mark-bg" x1="4" y1="2" x2="44" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1fb5ad"/>
+      <stop offset="0.5" stop-color="#0c6d8f"/>
+      <stop offset="1" stop-color="#073047"/>
+    </linearGradient>
+    <linearGradient id="bilim-mark-shine" x1="24" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="14" fill="url(#bilim-mark-bg)"/>
+  <rect width="48" height="24" rx="14" fill="url(#bilim-mark-shine)"/>
+  <rect x="0.75" y="0.75" width="46.5" height="46.5" rx="13.25" stroke="#fff" stroke-opacity="0.16" stroke-width="1.5"/>
+  <path d="M15.5 35V13h8.25a5.5 5.5 0 0 1 0 11H15.5m0 0h9.75a5.5 5.5 0 0 1 0 11H15.5" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M37 6.5c.55 3.1 1.4 3.95 4.5 4.5-3.1.55-3.95 1.4-4.5 4.5-.55-3.1-1.4-3.95-4.5-4.5 3.1-.55 3.95-1.4 4.5-4.5Z" fill="#f4a83a"/>
+</svg>
