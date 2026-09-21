@@ -15,6 +15,7 @@ export type CourseCardData = {
   durationHours: number;
   startDate?: Date | string | null;
   instructorName: string;
+  instructorAvatar?: string | null;
   category: { name: string; slug: string };
   avgRating: number;
   reviewCount: number;
@@ -102,7 +103,20 @@ export async function CourseCard({ course }: { course: CourseCardData }) {
         )}
 
         <div className="mt-auto flex items-center justify-between pt-2 text-sm text-ink-soft">
-          <span className="truncate">{course.instructorName}</span>
+          <span className="flex min-w-0 items-center gap-2">
+            {course.instructorAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element -- small local portrait, no optimisation needed
+              <img
+                src={course.instructorAvatar}
+                alt=""
+                width={24}
+                height={24}
+                loading="lazy"
+                className="h-6 w-6 shrink-0 rounded-full object-cover ring-2 ring-surface"
+              />
+            ) : null}
+            <span className="truncate">{course.instructorName}</span>
+          </span>
           <span className="flex shrink-0 items-center gap-1 text-amber">
             <Star aria-hidden className="h-4 w-4 fill-current group-hover:animate-icon-pop" />
             {course.avgRating > 0 ? course.avgRating.toFixed(1) : t.common.new}
