@@ -65,8 +65,7 @@ export type Knowledge = {
  * language and change whenever the texts are edited in the admin panel.
  */
 export function buildArticles(dict: Dictionary, t: Ui): ArticleFact[] {
-  const list = (items: string[]) => items.map((item) => `• ${item}`).join("
-");
+  const list = (items: string[]) => items.map((item) => `• ${item}`).join("\n");
   return [
     {
       id: "method",
@@ -74,8 +73,7 @@ export function buildArticles(dict: Dictionary, t: Ui): ArticleFact[] {
       text: [
         dict.learningExperience.subtitle,
         list(dict.learningExperience.items.map((item) => `${item.title}. ${item.description}`)),
-      ].join("
-"),
+      ].join("\n"),
     },
     {
       id: "steps",
@@ -88,16 +86,14 @@ export function buildArticles(dict: Dictionary, t: Ui): ArticleFact[] {
       text: [
         dict.journey.subtitle,
         list(dict.journey.scenes.map((scene) => `${scene.label} — ${scene.title}: ${scene.text}`)),
-      ].join("
-"),
+      ].join("\n"),
     },
     { id: "results", title: dict.results.title, text: dict.results.description },
     { id: "teachers", title: dict.instructors.title, text: dict.instructors.subtitle },
     {
       id: "online",
       title: dict.quickActions.title,
-      text: [dict.quickActions.description, `${dict.quickActions.examTitle}: ${dict.quickActions.examDesc}`].join("
-"),
+      text: [dict.quickActions.description, `${dict.quickActions.examTitle}: ${dict.quickActions.examDesc}`].join("\n"),
     },
     { id: "library", title: t.library.title, text: t.library.lead },
   ];
