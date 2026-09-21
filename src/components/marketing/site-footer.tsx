@@ -46,7 +46,7 @@ export async function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <div className="relative grid gap-12 md:grid-cols-[1.5fr_1fr_1fr_1fr]">
           <div className="flex flex-col gap-4">
-            <Logo className="[&_span]:!text-white" />
+            <Logo tone="light" />
             <p className="max-w-xs text-sm leading-6 text-white/50">{t.description}</p>
             <div className="flex flex-col gap-2 text-sm text-white/65">
               <span className="flex items-center gap-2">
