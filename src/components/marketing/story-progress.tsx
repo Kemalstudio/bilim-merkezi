@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 export type StoryStage = { id: string; label: string };
@@ -20,7 +20,8 @@ export function StoryProgress({
   stages: StoryStage[];
   navLabel: string;
 }) {
-  const [progress, setProgress] = useState(0);
+  // Written straight to the bar's style: re-rendering React on every scroll frame bought nothing.
+  const barRef = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +29,8 @@ export function StoryProgress({
 
     function measure() {
       const scrollable = document.documentElement.scrollHeight - window.innerHeight;
-      setProgress(scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0);
+      const progress = scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0;
+      if (barRef.current) barRef.current.style.transform = `scaleX(${progress})`;
       frame = 0;
     }
 
@@ -75,10 +77,7 @@ export function StoryProgress({
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5 bg-transparent"
       >
-        <div
-          className="h-full origin-left brand-gradient"
-          style={{ transform: `scaleX(${progress})` }}
-        />
+        <div ref={barRef} className="h-full origin-left brand-gradient" style={{ transform: "scaleX(0)" }} />
       </div>
 
       <nav
