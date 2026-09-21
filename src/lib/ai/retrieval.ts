@@ -2,11 +2,26 @@ import { normalize, tokens } from "@/lib/ai/text";
 
 /*
  * Local retrieval for the assistant: BM25 over course and FAQ documents, plus a small query
- * parser for the things parents usually say — the child's age or school grade, and whether
- * they ask about contacts, enrolment, results, prices or the schedule.
+ * parser for the things parents usually say — the child's age or school grade, and what kind
+ * of question it is: contacts, enrolment, results, prices, the schedule, the catalogue as a
+ * whole, teachers, the teaching method, certificates, group size or age limits — or just a
+ * greeting or a thank-you.
  */
 
-export type Intent = "contacts" | "enrollment" | "results" | "price" | "schedule";
+export type Intent =
+  | "contacts"
+  | "enrollment"
+  | "results"
+  | "price"
+  | "schedule"
+  | "catalog"
+  | "teachers"
+  | "method"
+  | "certificate"
+  | "groupSize"
+  | "ageRange"
+  | "greeting"
+  | "thanks";
 
 export type QueryInfo = {
   age: number | null;
@@ -20,6 +35,19 @@ const INTENT_PATTERNS: Record<Intent, RegExp> = {
   results: /(балл|результат|оценк|успеваем|прогресс|score|result|progress|marks|bal|netije|baha)/u,
   price: /(цен|стоим|сколько стоит|дешев|дорог|скидк|price|cost|how much|cheap|discount|baha|näçe|arzan|gymmat)/u,
   schedule: /(расписан|когда|старт|начало|время заняти|schedule|when|start|timetable|tertip|haçan|başlan)/u,
+  catalog:
+    /(какие (у вас )?(есть )?(курс|направлен|программ|предмет)|что (у вас )?(есть|преподают|изучают)|чему (вы )?уч|список курс|все курсы|каталог|направлени|what (courses|programs|subjects)|which courses|all courses|catalog|what do you (offer|teach)|haýsy kurs|näme kurs|kurslaryňyz|ähli kurs|ugurlar|näme öwred)/u,
+  teachers: /(преподават|учител|педагог|наставни|тренер|кто (ведет|преподает|учит)|teacher|tutor|instructor|mentor|who teaches|mugallym|halypa)/u,
+  method:
+    /(методик|как (проходят|проходит|построен|устроен)[а-я]* (заняти|урок|обучени)|как (вы )?(учите|обучаете|готовите|занимаетесь)|ваш подход|диагностик|пробник|how do you (teach|prepare)|how (are|do) (the )?(lessons|classes)|your (method|approach)|teaching method|usulyýet|nähili okad|sapaklar nähili)/u,
+  certificate: /(сертификат|диплом|certificat|diploma|sertifikat)/u,
+  groupSize:
+    /(сколько (детей|учеников|человек|ребят)|размер групп|в группе|группа (большая|маленькая)|индивидуальн|group size|how many (students|kids|children|pupils)|class size|one[- ]on[- ]one|individual lesson|toparda|topar näçe|näçe okuwçy|ýeke-täk)/u,
+  ageRange:
+    /(с какого возраста|до какого возраста|какого возраста|каком возрасте|для какого возраста|возрастн|from what age|what age|minimum age|age range|age limit|haýsy ýaşdan|näçe ýaşdan|ýaş çägi)/u,
+  greeting:
+    /^(привет|здравствуй|здравствуйте|добрый (день|вечер)|доброе утро|салам|hello|hi|hey|good (morning|afternoon|evening)|salam|salaam|gowy gün|ýagşy|ýagşymy)(?!\p{L})/u,
+  thanks: /(спасибо|благодар|thank|thanks|thx|sagbol|sag bol|minnetdar)/u,
 };
 
 const AGE_PATTERN =
