@@ -2,13 +2,15 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import type { Locale } from "@/lib/i18n/config";
-import { getDictionary } from "@/lib/i18n/dictionaries";
+import { getDictionary, type Dictionary } from "@/lib/i18n/dictionaries";
+import { getUiDictionary, type Ui } from "@/lib/i18n/ui";
 import { getContacts } from "@/lib/site-settings";
 import { buildIndex, type SearchIndex } from "@/lib/ai/retrieval";
 
 /*
- * What the assistant knows: the published catalogue, the FAQ in the visitor's language and the
- * centre's contacts. Everything comes from the database and the site's own texts, so an admin
+ * What the assistant knows: the published catalogue, the FAQ in the visitor's language, short
+ * articles about the centre (method, first steps, the path by grade, results, teachers, online
+ * enrolment, library) taken from the site's own texts, and the centre's contacts. Everything comes from the database and the site's own texts, so an admin
  * edit reaches the assistant within the cache window without any retraining.
  */
 
@@ -42,6 +44,10 @@ export type CourseFact = {
 
 export type FaqFact = { q: string; a: string };
 
+/** A piece of the site's own copy about how the centre works, answerable on its own. */
+export type ArticleId = "method" | "steps" | "journey" | "results" | "teachers" | "online" | "library";
+export type ArticleFact = { id: ArticleId; title: string; text: string };
+
 export type Contacts = { address: string; phone: string; email: string; hours?: string | null };
 
 export type Knowledge = {
@@ -49,8 +55,53 @@ export type Knowledge = {
   courseIndex: SearchIndex<CourseFact>;
   faq: FaqFact[];
   faqIndex: SearchIndex<FaqFact>;
+  articles: ArticleFact[];
+  articleIndex: SearchIndex<ArticleFact>;
   contacts: Contacts;
 };
+
+/**
+ * The articles are assembled from the landing-page dictionary, so they read in the visitor's
+ * language and change whenever the texts are edited in the admin panel.
+ */
+export function buildArticles(dict: Dictionary, t: Ui): ArticleFact[] {
+  const list = (items: string[]) => items.map((item) => `• ${item}`).join("
+");
+  return [
+    {
+      id: "method",
+      title: dict.learningExperience.title,
+      text: [
+        dict.learningExperience.subtitle,
+        list(dict.learningExperience.items.map((item) => `${item.title}. ${item.description}`)),
+      ].join("
+"),
+    },
+    {
+      id: "steps",
+      title: dict.howItWorks.title,
+      text: list(dict.howItWorks.steps.map((step, index) => `${index + 1}. ${step.title}: ${step.description}`)),
+    },
+    {
+      id: "journey",
+      title: dict.journey.title,
+      text: [
+        dict.journey.subtitle,
+        list(dict.journey.scenes.map((scene) => `${scene.label} — ${scene.title}: ${scene.text}`)),
+      ].join("
+"),
+    },
+    { id: "results", title: dict.results.title, text: dict.results.description },
+    { id: "teachers", title: dict.instructors.title, text: dict.instructors.subtitle },
+    {
+      id: "online",
+      title: dict.quickActions.title,
+      text: [dict.quickActions.description, `${dict.quickActions.examTitle}: ${dict.quickActions.examDesc}`].join("
+"),
+    },
+    { id: "library", title: t.library.title, text: t.library.lead },
+  ];
+}
 
 const TTL_MS = 5 * 60_000;
 let coursesCache: { at: number; courses: CourseFact[] } | null = null;
@@ -125,7 +176,13 @@ export async function getKnowledge(locale: Locale): Promise<Knowledge> {
     [item.a, 1],
   ]);
 
-  const knowledge = { courses, courseIndex, faq, faqIndex, contacts };
+  const articles = buildArticles(dict, getUiDictionary(locale));
+  const articleIndex = buildIndex(articles, (article) => [
+    [article.title, 3],
+    [article.text, 1],
+  ]);
+
+  const knowledge = { courses, courseIndex, faq, faqIndex, articles, articleIndex, contacts };
   localeCache.set(locale, { at: Date.now(), knowledge });
   return knowledge;
 }
