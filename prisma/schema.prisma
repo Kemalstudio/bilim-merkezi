@@ -235,7 +235,8 @@ model EnrollmentApplication {
 model Payment {
   id                    String        @id @default(cuid())
   amount                Decimal       @db.Decimal(10, 2)
-  currency              String        @default("usd")
+  /// Amounts are Turkmen manat; Stripe itself is charged in USD (see src/lib/money.ts).
+  currency              String        @default("tmt")
   status                PaymentStatus @default(PENDING)
   stripeCheckoutId      String?       @unique
   stripePaymentIntentId String?       @unique
@@ -404,6 +405,12 @@ enum OtpPurpose {
   RECOVERY
   /// Viewing exam results from the home page without signing in.
   RESULTS
+  /// Proving ownership of a new number when changing it in the account settings.
+  PHONE_CHANGE
+  /// Setting a first password on an account that has none.
+  PASSWORD_SET
+  /// Confirming that the account is to be deleted.
+  ACCOUNT_DELETE
 }
 
 /// Upcoming lessons and events shown on a parent's dashboard.
