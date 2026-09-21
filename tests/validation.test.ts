@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { verifyOtpSchema, resetPasswordSchema } from "@/lib/validations/phone-auth";
-import { credentialsSchema, registerSchema } from "@/lib/validations/auth";
+import { confirmRegistrationSchema, credentialsSchema, registerSchema } from "@/lib/validations/auth";
 import { enrollmentDocumentSchema } from "@/lib/validations/enrollment";
 
 test("OTP code: six digits pass, anything else fails", () => {
@@ -39,10 +39,32 @@ test("password login accepts an email or a phone number", () => {
 });
 
 test("registration lower-cases the email and caps the password at bcrypt's limit", () => {
-  const base = { name: "Айгуль", email: "Mom@Example.com", password: "password1", confirmPassword: "password1" };
+  const base = {
+    name: "Айгуль",
+    phone: "65 12 34 56",
+    email: "Mom@Example.com",
+    password: "password1",
+    confirmPassword: "password1",
+  };
   assert.equal(registerSchema.parse(base).email, "mom@example.com");
   const long = "a".repeat(73);
   assert.equal(registerSchema.safeParse({ ...base, password: long, confirmPassword: long }).success, false);
+});
+
+test("registration requires a phone number, email is optional", () => {
+  const base = { name: "Айгуль", password: "password1", confirmPassword: "password1" };
+  assert.equal(registerSchema.safeParse(base).success, false);
+  assert.equal(registerSchema.safeParse({ ...base, phone: "12345" }).success, false);
+  const parsed = registerSchema.parse({ ...base, phone: "8 65 123456", email: "  " });
+  assert.equal(parsed.phone, "99365123456");
+  assert.equal(parsed.email, undefined);
+});
+
+test("confirming registration needs a six-digit code", () => {
+  const details = { name: "Айгуль", phone: "65123456", password: "password1", confirmPassword: "password1" };
+  assert.equal(confirmRegistrationSchema.safeParse({ ...details, code: "123456" }).success, true);
+  assert.equal(confirmRegistrationSchema.safeParse({ ...details, code: "12a456" }).success, false);
+  assert.equal(confirmRegistrationSchema.safeParse(details).success, false);
 });
 
 test("enrollment document must reference an uploaded key", () => {
