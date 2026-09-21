@@ -3,7 +3,7 @@ import type { Ui } from "@/lib/i18n/ui";
 import { tpl, type Formatter } from "@/lib/i18n/format";
 import { parseQuery, search, type Intent, type SearchIndex } from "@/lib/ai/retrieval";
 import type { ChatMessage } from "@/lib/ai/providers";
-import type { Contacts, CourseFact, FaqFact } from "@/lib/ai/knowledge";
+import type { ArticleFact, ArticleId, Contacts, CourseFact, FaqFact } from "@/lib/ai/knowledge";
 
 /*
  * The assistant's reasoning that does not need a model: which courses and FAQ entries answer
@@ -16,6 +16,9 @@ export type KnowledgeView = {
   courseIndex: SearchIndex<CourseFact>;
   faq: FaqFact[];
   faqIndex: SearchIndex<FaqFact>;
+  /** Articles about the centre; optional so a catalogue-only view still works. */
+  articles?: ArticleFact[];
+  articleIndex?: SearchIndex<ArticleFact>;
   contacts: Contacts;
 };
 
@@ -24,9 +27,21 @@ export type AnswerPlan = {
   intents: Intent[];
   courses: CourseFact[];
   faq: FaqFact[];
+  articles: ArticleFact[];
   /** True when the question names a subject or goal, not only an age or a service question. */
   hasTopic: boolean;
+  /** Like hasTopic, but for the latest message only — "which courses do you have?" has none. */
+  asksTopic: boolean;
 };
+
+/** Questions that are about the centre itself rather than a particular course. */
+const ARTICLE_FOR_INTENT: Partial<Record<Intent, ArticleId[]>> = {
+  method: ["method", "steps"],
+  teachers: ["teachers"],
+};
+
+/** Intents answered from the catalogue as a whole, so no course search is needed for them. */
+const CATALOGUE_INTENTS: Intent[] = ["catalog", "ageRange", "greeting", "thanks", "method", "teachers"];
 
 export type CourseCard = {
   slug: string;
@@ -56,13 +71,17 @@ export function planAnswer(knowledge: KnowledgeView, messages: ChatMessage[]): A
   const hasTopic = topicTokens.length > 0;
 
   const serviceOnly = latest.intents.some((intent) => intent !== "price" && intent !== "schedule") && latest.tokens.length <= 3;
+  const asksTopic = latest.tokens.length > 0;
+  // "Какие курсы есть?", "Привет", "Как проходят занятия?" are about the centre, not a subject
+  // carried over from an earlier message.
+  const aboutCentre = !asksTopic && latest.intents.some((intent) => CATALOGUE_INTENTS.includes(intent));
 
   let courses: CourseFact[] = [];
-  if (hasTopic) {
+  if (hasTopic && !aboutCentre) {
     const hits = search(knowledge.courseIndex, topicTokens).map((hit) => hit.item);
     courses = age == null ? hits : hits.filter((course) => fitsAge(course, age));
   }
-  if (courses.length === 0 && age != null && !serviceOnly && (!hasTopic || latest.intents.length === 0)) {
+  if (courses.length === 0 && age != null && !serviceOnly && !aboutCentre && (!hasTopic || latest.intents.length === 0)) {
     // Only an age (or nothing matched the topic for that age): suggest what suits the age best.
     courses = knowledge.courses.filter((course) => fitsAge(course, age)).sort((a, b) => popularity(b) - popularity(a));
   }
@@ -73,7 +92,26 @@ export function planAnswer(knowledge: KnowledgeView, messages: ChatMessage[]): A
     .slice(0, 2)
     .map((hit) => hit.item);
 
-  return { age, intents: latest.intents, courses: courses.slice(0, MAX_CONTEXT_COURSES), faq, hasTopic };
+  // Articles named by the intent come first; otherwise the best text match, if it is a good one.
+  const allArticles = knowledge.articles ?? [];
+  const wanted = latest.intents.flatMap((intent) => ARTICLE_FOR_INTENT[intent] ?? []);
+  let articles = allArticles.filter((article) => wanted.includes(article.id));
+  if (articles.length === 0 && knowledge.articleIndex && courses.length === 0 && faq.length === 0) {
+    articles = search(knowledge.articleIndex, latest.tokens)
+      .filter((hit) => hit.score >= 2)
+      .slice(0, 1)
+      .map((hit) => hit.item);
+  }
+
+  return {
+    age,
+    intents: latest.intents,
+    courses: courses.slice(0, MAX_CONTEXT_COURSES),
+    faq,
+    articles,
+    hasTopic,
+    asksTopic,
+  };
 }
 
 export function courseCard(course: CourseFact, f: Formatter): CourseCard {
@@ -161,17 +199,105 @@ export function buildContext(plan: AnswerPlan, knowledge: KnowledgeView, t: Ui, 
   if (plan.faq.length) {
     sections.push(`FAQ:\n${plan.faq.map((item) => `Q: ${item.q}\nA: ${item.a}`).join("\n")}`);
   }
+  if (plan.articles.length) {
+    sections.push(`About the centre:\n${plan.articles.map((article) => `${article.title}\n${article.text}`).join("\n\n")}`);
+  }
+  if (plan.intents.includes("catalog") || plan.intents.includes("ageRange")) {
+    sections.push(`Catalogue overview:\n${catalogueLines(knowledge.courses, t, f).join("\n")}`);
+  }
   sections.push("END OF CONTEXT");
   return sections.join("\n\n");
 }
 
 /* ── local answer ─────────────────────────────────────────────────────────────────── */
 
+type CategoryGroup = { category: string; courses: CourseFact[]; ageMin: number | null; ageMax: number | null };
+
+/** Published courses grouped by category, largest group first. */
+function groupByCategory(courses: CourseFact[]): CategoryGroup[] {
+  const groups = new Map<string, CourseFact[]>();
+  for (const course of courses) groups.set(course.category, [...(groups.get(course.category) ?? []), course]);
+  return [...groups.entries()]
+    .map(([category, items]) => {
+      const mins = items.map((item) => item.ageMin).filter((value): value is number => value != null);
+      const maxes = items.map((item) => item.ageMax).filter((value): value is number => value != null);
+      return {
+        category,
+        courses: [...items].sort((a, b) => popularity(b) - popularity(a)),
+        ageMin: mins.length ? Math.min(...mins) : null,
+        ageMax: maxes.length ? Math.max(...maxes) : null,
+      };
+    })
+    .sort((a, b) => b.courses.length - a.courses.length);
+}
+
+const TITLES_PER_CATEGORY = 3;
+
+/** One line per category: its age span and its best-known courses. */
+function catalogueLines(courses: CourseFact[], t: Ui, f: Formatter) {
+  const a = t.assistant.fallback;
+  return groupByCategory(courses).map((group) => {
+    const shown = group.courses.slice(0, TITLES_PER_CATEGORY).map((course) => course.title);
+    const rest = group.courses.length - shown.length;
+    return tpl(a.catalogLine, {
+      category: group.category,
+      age: f.ageRange(group.ageMin, group.ageMax) ?? a.anyAge,
+      titles: shown.join("; ") + (rest > 0 ? tpl(a.catalogMore, { count: rest }) : ""),
+    });
+  });
+}
+
+/** The courses a certificate or group-size question is about: the matched ones, or all. */
+function subjectCourses(plan: AnswerPlan, knowledge: KnowledgeView) {
+  return plan.courses.length > 0 ? plan.courses.slice(0, MAX_CARDS) : knowledge.courses;
+}
+
+function certificateAnswer(plan: AnswerPlan, knowledge: KnowledgeView, t: Ui) {
+  const a = t.assistant.fallback;
+  const courses = subjectCourses(plan, knowledge);
+  const withCertificate = courses.filter((course) => course.certificate);
+  if (plan.courses.length === 0) {
+    return tpl(a.certificateCatalog, { count: withCertificate.length, total: courses.length });
+  }
+  return withCertificate.length > 0
+    ? tpl(a.certificateYes, { titles: withCertificate.map((course) => course.title).join("; ") })
+    : a.certificateNo;
+}
+
+function groupSizeAnswer(plan: AnswerPlan, knowledge: KnowledgeView, t: Ui) {
+  const a = t.assistant.fallback;
+  const sized = subjectCourses(plan, knowledge).filter((course) => course.groupSize != null);
+  if (sized.length === 0) return tpl(a.groupUnknown, { phone: knowledge.contacts.phone });
+  if (plan.courses.length === 0) {
+    const sizes = sized.map((course) => course.groupSize as number);
+    const min = Math.min(...sizes);
+    const max = Math.max(...sizes);
+    return tpl(a.groupRange, { range: min === max ? String(max) : `${min}–${max}` });
+  }
+  return [
+    a.groupIntro,
+    ...sized.map((course) => `• ${tpl(a.groupLine, { title: course.title, size: course.groupSize as number })}`),
+  ].join("\n");
+}
+
+/** Only small talk — nothing asked yet that needs data. */
+function isSmallTalk(plan: AnswerPlan, intent: "greeting" | "thanks") {
+  return (
+    plan.intents.includes(intent) &&
+    plan.intents.every((item) => item === "greeting" || item === "thanks") &&
+    !plan.asksTopic &&
+    plan.age == null
+  );
+}
+
 /** A complete, correct answer from the data alone — used without a model or when it fails. */
 export function composeLocalAnswer(plan: AnswerPlan, knowledge: KnowledgeView, t: Ui, f: Formatter) {
   const a = t.assistant.fallback;
   const { contacts } = knowledge;
   const parts: string[] = [];
+
+  if (isSmallTalk(plan, "thanks")) return a.thanks;
+  if (isSmallTalk(plan, "greeting")) return a.greeting;
 
   if (plan.intents.includes("contacts")) {
     parts.push(
@@ -181,6 +307,36 @@ export function composeLocalAnswer(plan: AnswerPlan, knowledge: KnowledgeView, t
   }
   if (plan.intents.includes("enrollment")) parts.push(a.enrollment);
   if (plan.intents.includes("results")) parts.push(a.results);
+
+  if (plan.intents.includes("catalog") && !plan.asksTopic && knowledge.courses.length > 0) {
+    parts.push(
+      [
+        tpl(a.catalogIntro, { count: knowledge.courses.length }),
+        ...catalogueLines(knowledge.courses, t, f).map((line) => `• ${line}`),
+      ].join("\n"),
+      a.catalogHint
+    );
+  }
+  if (plan.intents.includes("ageRange") && !plan.asksTopic && knowledge.courses.length > 0) {
+    const mins = knowledge.courses.map((course) => course.ageMin).filter((value): value is number => value != null);
+    const maxes = knowledge.courses.map((course) => course.ageMax).filter((value): value is number => value != null);
+    const range =
+      f.ageRange(mins.length ? Math.min(...mins) : null, maxes.length ? Math.max(...maxes) : null) ?? a.anyAge;
+    parts.push(
+      [
+        tpl(a.ageRangeIntro, { range }),
+        ...groupByCategory(knowledge.courses).map(
+          (group) => `• ${group.category}: ${f.ageRange(group.ageMin, group.ageMax) ?? a.anyAge}`
+        ),
+      ].join("\n")
+    );
+  }
+  for (const article of plan.articles) {
+    parts.push(`${article.title}\n${article.text}`);
+    if (article.id === "teachers") parts.push(tpl(a.teachersMore, { phone: contacts.phone }));
+  }
+  if (plan.intents.includes("certificate")) parts.push(certificateAnswer(plan, knowledge, t));
+  if (plan.intents.includes("groupSize")) parts.push(groupSizeAnswer(plan, knowledge, t));
 
   const shown = plan.courses.slice(0, MAX_CARDS);
   if (shown.length > 0) {
