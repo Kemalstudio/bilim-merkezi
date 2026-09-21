@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import type { Role } from "@prisma/client";
 import {
   ArrowUpRight,
-  Atom,
   Bot,
   BookOpen,
   ClipboardCheck,
@@ -28,6 +27,7 @@ import {
 } from "lucide-react";
 import { adminSignOutAction } from "@/actions/admin-auth";
 import { cn, initials } from "@/lib/utils";
+import { BrandMark } from "@/components/brand/brand-mark";
 
 type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; adminOnly?: boolean };
 
@@ -84,9 +84,7 @@ export function AdminNav({ user }: { user: NavUser }) {
 
       <div className="relative flex items-center justify-between gap-3 px-5 py-4 lg:px-6 lg:pb-2 lg:pt-7">
         <Link href="/bilim/admin" onClick={() => setOpen(false)} className="group flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[0.8rem] bg-accent text-[#0b2233] transition-transform duration-300 group-hover:rotate-6">
-            <Atom className="h-5 w-5" strokeWidth={2.25} />
-          </span>
+          <BrandMark className="transition-transform duration-300 group-hover:rotate-[-4deg]" />
           <span className="flex flex-col leading-none">
             <span className="font-display text-[1.05rem] font-extrabold tracking-[-0.04em]">BILIM</span>
             <span className="mt-1 text-[0.55rem] font-bold uppercase tracking-[0.22em] text-accent">админ-панель</span>
