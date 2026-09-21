@@ -47,8 +47,9 @@ export async function requestExamCodeAction(formData: FormData): Promise<ExamCod
 
   const hasResults = (await prisma.examResult.count({ where: { phone } })) > 0;
   if (hasResults) {
-    const issued = await issueOtp(phone, "RESULTS", t.sms.code);
+    const issued = await issueOtp(phone, "RESULTS", t.sms.results);
     if (!issued.ok) {
+      if (issued.reason === "unavailable") return { status: "error", error: t.errors.smsUnavailable };
       return { status: "error", error: tpl(t.errors.codeCooldown, { seconds: issued.retryInSeconds }) };
     }
   }
