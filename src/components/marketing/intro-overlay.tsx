@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Atom } from "lucide-react";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -118,9 +118,7 @@ export function IntroOverlay() {
 
       <div data-intro-content className="relative flex w-[min(78vw,20rem)] flex-col items-center gap-9">
         <div className="intro-mark flex items-center gap-3.5">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-[#0b2233] shadow-[0_0_48px_-8px_rgba(244,168,58,0.6)]">
-            <Atom className="h-7 w-7" strokeWidth={2.25} />
-          </span>
+          <BrandMark className="h-14 w-14 drop-shadow-[0_0_28px_rgba(31,181,173,0.35)]" />
           <span className="flex flex-col leading-none">
             <span className="font-display text-[1.7rem] font-extrabold tracking-[-0.04em] text-white">BILIM</span>
             <span className="mt-1.5 text-[0.66rem] font-bold uppercase tracking-[0.34em] text-white/55">merkezi</span>
