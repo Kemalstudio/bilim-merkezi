@@ -40,14 +40,15 @@ export async function requestOtpAction(_prev: RequestOtpState, formData: FormDat
     return { status: "error", error: t.errors.tooManyRequests };
   }
 
-  if (purpose === "RECOVERY") {
-    const account = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
-    // Deliberately does not reveal whether the number is registered.
-    if (!account) return sent;
-  }
+  const account = await prisma.user.findUnique({ where: { phone }, select: { id: true } });
+  // Deliberately does not reveal whether the number is registered.
+  if (purpose === "RECOVERY" && !account) return sent;
 
-  const result = await issueOtp(phone, purpose, t.sms.code);
+  // Signing in by SMS creates the account on first use, so a new number gets the registration text.
+  const text = purpose === "RECOVERY" ? t.sms.recovery : account ? t.sms.login : t.sms.register;
+  const result = await issueOtp(phone, purpose, text);
   if (!result.ok) {
+    if (result.reason === "unavailable") return { status: "error", error: t.errors.smsUnavailable };
     return { status: "error", error: tpl(t.errors.codeCooldown, { seconds: result.retryInSeconds }) };
   }
   return sent;
