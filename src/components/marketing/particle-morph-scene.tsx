@@ -129,8 +129,8 @@ export function ParticleMorphScene({ state, onReady }: { state: RefObject<MorphS
       window.addEventListener("pointermove", handlePointerMove, { passive: true });
 
       let frame = 0;
-      let running = true;
       let morph = 0;
+      let drawnMorph = -1;
       let spin = 0;
       const clock = new THREE.Clock();
       const attribute = geometry.getAttribute("position") as InstanceType<typeof THREE.BufferAttribute>;
@@ -142,16 +142,23 @@ export function ParticleMorphScene({ state, onReady }: { state: RefObject<MorphS
         const wanted = gsapLikeClamp(state.current.progress) * (SHAPES - 1);
         morph += (wanted - morph) * 0.08;
 
-        const from = Math.min(SHAPES - 1, Math.floor(morph));
-        const to = Math.min(SHAPES - 1, from + 1);
-        const blend = morph - from;
-        const a = targets[from];
-        const b = targets[to];
+        if (Math.abs(wanted - morph) < 0.0005) morph = wanted;
 
-        for (let i = 0; i < COUNT * 3; i += 1) {
-          positions[i] = a[i] + (b[i] - a[i]) * blend;
+        // Blending 10 500 coordinates and re-uploading them is the expensive part, so it runs
+        // only while the shape is actually changing; at rest the cloud just rotates.
+        if (morph !== drawnMorph) {
+          const from = Math.min(SHAPES - 1, Math.floor(morph));
+          const to = Math.min(SHAPES - 1, from + 1);
+          const blend = morph - from;
+          const a = targets[from];
+          const b = targets[to];
+
+          for (let i = 0; i < COUNT * 3; i += 1) {
+            positions[i] = a[i] + (b[i] - a[i]) * blend;
+          }
+          attribute.needsUpdate = true;
+          drawnMorph = morph;
         }
-        attribute.needsUpdate = true;
 
         // Scroll speed spins the cloud and stretches the points a little.
         const speed = Math.min(Math.abs(state.current.velocity) / 1400, 1);
@@ -166,31 +173,34 @@ export function ParticleMorphScene({ state, onReady }: { state: RefObject<MorphS
         renderer.render(scene, camera);
       }
 
+      // Exactly one frame chain at a time. The observer fires once on connect and again on
+      // every tab switch, and each of those used to start another chain on top of the running
+      // one — the scene then rendered two or three times per frame.
+      let onScreen = false;
       function loop() {
-        if (!running) return;
         renderFrame();
         frame = requestAnimationFrame(loop);
+      }
+      function sync() {
+        const shouldRun = onScreen && !document.hidden;
+        if (shouldRun && frame === 0) {
+          frame = requestAnimationFrame(loop);
+        } else if (!shouldRun && frame !== 0) {
+          cancelAnimationFrame(frame);
+          frame = 0;
+        }
       }
 
       const observer = new IntersectionObserver(
         ([entry]) => {
-          running = entry.isIntersecting && !document.hidden;
-          if (running) {
-            clock.getDelta();
-            loop();
-          } else {
-            cancelAnimationFrame(frame);
-          }
+          onScreen = entry.isIntersecting;
+          sync();
         },
         { threshold: 0 }
       );
       observer.observe(container!);
 
-      function handleVisibility() {
-        running = !document.hidden;
-        if (running) loop();
-        else cancelAnimationFrame(frame);
-      }
+      const handleVisibility = () => sync();
       document.addEventListener("visibilitychange", handleVisibility);
 
       const resizeObserver = new ResizeObserver(([entry]) => {
@@ -203,7 +213,7 @@ export function ParticleMorphScene({ state, onReady }: { state: RefObject<MorphS
       });
       resizeObserver.observe(container!);
 
-      loop();
+      renderFrame();
       onReady?.();
 
       cleanup = () => {
