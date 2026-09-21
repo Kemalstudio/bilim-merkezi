@@ -1,7 +1,27 @@
 import { z } from "zod";
 import { normalizePhone } from "@/lib/phone";
+import { OTP_LENGTH } from "@/lib/otp-constants";
 
 // Messages are keys of `errors` in src/lib/i18n/ui — actions turn them into the visitor's language.
+
+/** Accepts any typed format and hands downstream code a normalised number. */
+export const phoneField = z
+  .string({ error: "phoneRequired" })
+  .min(1, "phoneRequired")
+  .transform((value, ctx) => {
+    const normalized = normalizePhone(value);
+    if (!normalized) {
+      ctx.addIssue({ code: "custom", message: "phoneInvalid" });
+      return z.NEVER;
+    }
+    return normalized;
+  });
+
+// String.raw keeps "\d" intact; in a plain template literal it collapses to "d" and the
+// pattern would only ever match "dddddd".
+const OTP_PATTERN = new RegExp(String.raw`^\d{${OTP_LENGTH}}$`);
+
+export const otpCodeField = z.string({ error: "codeFormat" }).trim().regex(OTP_PATTERN, "codeFormat");
 
 // Stored and compared in lower case, so "Name@Mail.com" and "name@mail.com" are one account.
 const emailField = z
@@ -49,10 +69,15 @@ export const credentialsSchema = z.object({
   password: passwordField,
 });
 
+/**
+ * Registration needs a phone number, confirmed by SMS before the account exists. Email is
+ * optional: many parents have none, and a blank field means "no email", not an error.
+ */
 export const registerSchema = z
   .object({
     name: z.string({ error: "nameShort" }).trim().min(2, "nameShort").max(80, "nameLong"),
-    email: emailField,
+    phone: phoneField,
+    email: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), emailField.optional()),
     password: newPasswordField,
     confirmPassword: z.string({ error: "passwordMismatch" }),
   })
@@ -60,6 +85,9 @@ export const registerSchema = z
     message: "passwordMismatch",
     path: ["confirmPassword"],
   });
+
+/** The second registration step: the same details plus the code from the SMS. */
+export const confirmRegistrationSchema = registerSchema.and(z.object({ code: otpCodeField }));
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
