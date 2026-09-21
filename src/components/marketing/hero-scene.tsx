@@ -125,7 +125,6 @@ export function HeroScene({ onReady }: { onReady?: () => void }) {
       window.addEventListener("pointermove", handlePointerMove, { passive: true });
 
       let frame = 0;
-      let running = true;
       const clock = new THREE.Clock();
 
       function renderFrame() {
@@ -139,32 +138,35 @@ export function HeroScene({ onReady }: { onReady?: () => void }) {
         renderer.render(scene, camera);
       }
 
+      // Exactly one frame chain at a time. The observer fires once on connect and again on
+      // every tab switch, and each of those used to start another chain on top of the running
+      // one — the scene then rendered two or three times per frame.
+      let onScreen = false;
       function loop() {
-        if (!running) return;
         renderFrame();
         frame = requestAnimationFrame(loop);
       }
+      function sync() {
+        const shouldRun = onScreen && !document.hidden;
+        if (shouldRun && frame === 0) {
+          frame = requestAnimationFrame(loop);
+        } else if (!shouldRun && frame !== 0) {
+          cancelAnimationFrame(frame);
+          frame = 0;
+        }
+      }
 
-      // Nothing renders while the hero is scrolled away or the tab is hidden.
+      // Nothing renders while the scene is scrolled away or the tab is hidden.
       const observer = new IntersectionObserver(
         ([entry]) => {
-          running = entry.isIntersecting && !document.hidden;
-          if (running) {
-            clock.getDelta();
-            loop();
-          } else {
-            cancelAnimationFrame(frame);
-          }
+          onScreen = entry.isIntersecting;
+          sync();
         },
         { threshold: 0 }
       );
       observer.observe(container!);
 
-      function handleVisibility() {
-        running = !document.hidden;
-        if (running) loop();
-        else cancelAnimationFrame(frame);
-      }
+      const handleVisibility = () => sync();
       document.addEventListener("visibilitychange", handleVisibility);
 
       const resizeObserver = new ResizeObserver(([entry]) => {
@@ -177,7 +179,7 @@ export function HeroScene({ onReady }: { onReady?: () => void }) {
       });
       resizeObserver.observe(container!);
 
-      loop();
+      renderFrame();
       onReady?.();
 
       cleanup = () => {
