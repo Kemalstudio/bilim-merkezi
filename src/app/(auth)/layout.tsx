@@ -14,7 +14,7 @@ export default async function AuthLayout({ children }: Readonly<{ children: Reac
           variant="watermark"
           className="absolute -right-24 top-1/2 h-[42rem] w-[42rem] -translate-y-1/2 text-accent opacity-[0.12]"
         />
-        <Logo className="relative w-fit [&_span]:!text-white" />
+        <Logo tone="light" className="relative w-fit" />
         <div className="relative max-w-xl">
           <p className="text-[0.7rem] font-extrabold uppercase tracking-[0.14em] text-accent">{t.auth.panelEyebrow}</p>
           <h1 className="mt-6 font-display text-5xl font-bold leading-[1.01] tracking-[-0.06em] xl:text-6xl">
