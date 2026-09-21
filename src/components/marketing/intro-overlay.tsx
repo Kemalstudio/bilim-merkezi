@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { Atom } from "lucide-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -8,28 +9,34 @@ import { markIntroDone } from "@/lib/scroll-reveal";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const SEEN_KEY = "bilim:intro-seen";
+/** Also read by the inline script in the root layout, which hides a seen intro before paint. */
+export const INTRO_SEEN_KEY = "bilim:intro-seen";
 
 /** sessionStorage can throw (private mode, blocked cookies), so both ways are guarded. */
 function wasSeen() {
   try {
-    return sessionStorage.getItem(SEEN_KEY) === "1";
+    return sessionStorage.getItem(INTRO_SEEN_KEY) === "1";
   } catch {
     return false;
   }
 }
 function markSeen() {
   try {
-    sessionStorage.setItem(SEEN_KEY, "1");
+    sessionStorage.setItem(INTRO_SEEN_KEY, "1");
   } catch {
     // Nothing to do: the intro simply plays again next time.
   }
 }
 
 /**
- * First-load curtain: the brand mark with a loading bar and a 000→100 counter, then the
- * curtain slides up to reveal the page. Plays once per session, and is hidden outright
- * without JavaScript or with reduced motion (see #site-intro in globals.css).
+ * First-load curtain: the brand mark, a thin loading bar and a percentage, then the curtain
+ * lifts to reveal the page. Plays once per session.
+ *
+ * It is server-rendered, so it is on screen before the page's JavaScript arrives. Until then
+ * CSS keeps the bar creeping forward (`intro-pending` in globals.css) so the curtain never
+ * looks frozen; once hydrated, GSAP picks the bar up from wherever CSS left it. Without
+ * JavaScript, with reduced motion, or on a repeat visit it is hidden before first paint, and
+ * a CSS failsafe removes it if scripts stall.
  */
 export function IntroOverlay() {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -40,10 +47,13 @@ export function IntroOverlay() {
 
     const counter = root.querySelector<HTMLElement>("[data-intro-count]");
     const bar = root.querySelector<HTMLElement>("[data-intro-bar]");
-    const mark = root.querySelector<HTMLElement>("[data-intro-mark]");
+    const content = root.querySelector<HTMLElement>("[data-intro-content]");
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    if (reduced || wasSeen()) {
+    // The CSS failsafe already cleared the curtain (scripts took over 6 s): don't bring it back.
+    const clearedByFailsafe = getComputedStyle(root).opacity !== "1";
+
+    if (reduced || wasSeen() || clearedByFailsafe) {
       gsap.set(root, { display: "none" });
       markIntroDone();
       return;
@@ -54,7 +64,20 @@ export function IntroOverlay() {
     const previousOverflow = body.style.overflow;
     body.style.overflow = "hidden";
 
-    const loaded = { progress: 0 };
+    // Take over from the CSS: keep the bar where it has got to, and stop the failsafe.
+    const startScale = bar ? Number(gsap.getProperty(bar, "scaleX")) || 0 : 0;
+    root.style.animation = "none";
+    if (bar) {
+      bar.style.animation = "none";
+      gsap.set(bar, { scaleX: startScale });
+    }
+
+    const loaded = { progress: Math.round(startScale * 100) };
+    const render = () => {
+      if (counter) counter.textContent = `${Math.round(loaded.progress)}%`;
+    };
+    render();
+
     const timeline = gsap.timeline({
       onComplete: () => {
         body.style.overflow = previousOverflow;
@@ -65,24 +88,13 @@ export function IntroOverlay() {
     });
 
     timeline
-      .fromTo(mark, { autoAlpha: 0, y: 20 }, { autoAlpha: 1, y: 0, duration: 0.4, ease: "power2.out" }, 0)
-      .fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 1, ease: "power2.inOut" }, 0.1)
-      .to(
-        loaded,
-        {
-          progress: 100,
-          duration: 1,
-          ease: "power2.inOut",
-          onUpdate: () => {
-            if (counter) counter.textContent = String(Math.round(loaded.progress)).padStart(3, "0");
-          },
-        },
-        0.1
-      )
-      .to([mark, bar, counter], { autoAlpha: 0, duration: 0.25, ease: "power1.in" }, 1.15)
-      .to(root, { clipPath: "inset(0% 0% 100% 0%)", duration: 0.7, ease: "power3.inOut" }, 1.25)
+      .to(counter, { autoAlpha: 1, duration: 0.3, ease: "power1.out" }, 0)
+      .to(bar, { scaleX: 1, duration: 0.9, ease: "power2.inOut" }, 0)
+      .to(loaded, { progress: 100, duration: 0.9, ease: "power2.inOut", onUpdate: render }, 0)
+      .to(content, { autoAlpha: 0, y: -12, duration: 0.3, ease: "power2.in" }, 1.05)
+      .to(root, { clipPath: "inset(0% 0% 100% 0%)", duration: 0.75, ease: "power3.inOut" }, 1.15)
       // Above-the-fold reveals wait for this, so they start as the curtain lifts.
-      .call(markIntroDone, undefined, 1.3);
+      .call(markIntroDone, undefined, 1.25);
 
     return () => {
       timeline.kill();
@@ -96,24 +108,39 @@ export function IntroOverlay() {
       ref={rootRef}
       id="site-intro"
       aria-hidden
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[#062434] [clip-path:inset(0%_0%_0%_0%)]"
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#062434] [clip-path:inset(0%_0%_0%_0%)]"
     >
-      <div className="flex w-[min(80vw,26rem)] flex-col items-center gap-6">
-        <div data-intro-mark className="flex items-center gap-3 text-white">
-          <span className="brand-gradient flex h-12 w-12 items-center justify-center rounded-2xl font-display text-lg font-bold">
-            B
+      {/* A soft glow behind the mark, so the curtain has depth rather than a flat fill. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/2 top-1/2 h-[36rem] w-[36rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(63,208,201,0.16)_0%,rgba(6,36,52,0)_65%)]"
+      />
+
+      <div data-intro-content className="relative flex w-[min(78vw,20rem)] flex-col items-center gap-9">
+        <div className="intro-mark flex items-center gap-3.5">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent text-[#0b2233] shadow-[0_0_48px_-8px_rgba(244,168,58,0.6)]">
+            <Atom className="h-7 w-7" strokeWidth={2.25} />
           </span>
-          <span className="font-display text-2xl font-bold tracking-[-0.04em]">Bilim</span>
+          <span className="flex flex-col leading-none">
+            <span className="font-display text-[1.7rem] font-extrabold tracking-[-0.04em] text-white">BILIM</span>
+            <span className="mt-1.5 text-[0.66rem] font-bold uppercase tracking-[0.34em] text-white/55">merkezi</span>
+          </span>
         </div>
-        <div className="h-0.5 w-full overflow-hidden rounded-full bg-white/15">
-          <div data-intro-bar className="h-full w-full origin-left bg-accent" />
+
+        <div className="flex w-full flex-col gap-3">
+          <div className="h-[3px] w-full overflow-hidden rounded-full bg-white/10">
+            <div
+              data-intro-bar
+              className="intro-bar h-full w-full origin-left rounded-full bg-gradient-to-r from-[#3fd0c9] to-accent"
+            />
+          </div>
+          <span
+            data-intro-count
+            className="invisible self-end opacity-0 font-display text-xs font-semibold tabular-nums tracking-[0.08em] text-white/60"
+          >
+            0%
+          </span>
         </div>
-        <span
-          data-intro-count
-          className="font-display text-6xl font-bold tabular-nums tracking-[-0.05em] text-accent sm:text-7xl"
-        >
-          000
-        </span>
       </div>
     </div>
   );
