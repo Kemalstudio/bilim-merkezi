@@ -56,4 +56,4 @@ export async function sendSms(message: SmsMessage): Promise<SmsResult> {
 }
 
 /** True when codes only reach the server log, so the UI can say so in dev. */
-export const isSmsSimulated = process.env.SMS_PROVIDER !== "http";
+export const isSmsSimulated = process.env.SMS_PROVIDER !== "http" && process.env.SMS_PROVIDER !== "otp-gateway";
