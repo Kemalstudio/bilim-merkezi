@@ -7,6 +7,8 @@ import { requireUser } from "@/lib/rbac";
 import { updateProfileSchema, changePasswordSchema } from "@/lib/validations/profile";
 import { getI18n } from "@/lib/i18n/server";
 import { issueText } from "@/lib/i18n/ui";
+import { logAction } from "@/lib/audit";
+import { updateSession } from "@/lib/auth";
 
 export type ProfileActionState = { error?: string; success?: string } | undefined;
 
@@ -22,6 +24,8 @@ export async function updateProfileAction(
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { name: parsed.data.name } });
+  await logAction(user.id, "profile.updated", "user", user.id);
+  await updateSession({ user: { name: parsed.data.name } }).catch(() => {});
   revalidatePath("/account/settings");
   return { success: t.errors.profileUpdated };
 }
@@ -53,5 +57,6 @@ export async function changePasswordAction(
 
   const newHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: newHash } });
+  await logAction(user.id, "auth.password_changed", "user", user.id);
   return { success: t.errors.passwordChanged };
 }
