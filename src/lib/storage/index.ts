@@ -20,8 +20,8 @@ import { amzDateOf, encodeSegment, sha256Hex, signV4 } from "@/lib/storage/sigv4
  * never served publicly — only through /api/documents with an ownership check.
  */
 
-export type Namespace = "covers" | "library" | "documents";
-export const PUBLIC_NAMESPACES: readonly Namespace[] = ["covers", "library"];
+export type Namespace = "covers" | "library" | "documents" | "avatars";
+export const PUBLIC_NAMESPACES: readonly Namespace[] = ["covers", "library", "avatars"];
 
 export type StoredObject = { bytes: Buffer; contentType: string };
 
@@ -36,7 +36,7 @@ const contentTypeOf = (key: string) => MIME_BY_EXT[key.split(".").pop()?.toLower
 
 /** Keys we generate are "<namespace>/<uuid>.<ext>"; anything else is refused before any I/O. */
 export function isValidKey(key: string) {
-  return /^(covers|library|documents)\/[a-f0-9-]{36}\.[a-z0-9]{2,5}$/i.test(key);
+  return /^(covers|library|documents|avatars)\/[a-f0-9-]{36}\.[a-z0-9]{2,5}$/i.test(key);
 }
 
 /* ── local disk ───────────────────────────────────────────────────────────────────── */
@@ -44,6 +44,7 @@ export function isValidKey(key: string) {
 const LOCAL_DIRS: Record<Namespace, string> = {
   covers: path.join(process.cwd(), "public", "uploads"),
   library: path.join(process.cwd(), "public", "uploads", "library"),
+  avatars: path.join(process.cwd(), "public", "uploads", "avatars"),
   documents: path.join(process.cwd(), "private-uploads", "enrollment-documents"),
 };
 
@@ -69,7 +70,9 @@ const localDriver: Driver = {
   // The same public URLs the site has always used, served straight from /public.
   url(key) {
     const { file } = localFile(key);
-    return key.startsWith("library/") ? `/uploads/library/${file}` : `/uploads/${file}`;
+    if (key.startsWith("library/")) return `/uploads/library/${file}`;
+    if (key.startsWith("avatars/")) return `/uploads/avatars/${file}`;
+    return `/uploads/${file}`;
   },
 };
 
