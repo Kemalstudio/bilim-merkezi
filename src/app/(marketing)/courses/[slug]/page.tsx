@@ -11,7 +11,7 @@ import { getI18n } from "@/lib/i18n/server";
 import { LANGUAGE_TAGS, tpl } from "@/lib/i18n/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CourseCover } from "@/components/courses/course-cover";
 import { WeeklyProgram } from "@/components/courses/weekly-program";
 import { ReviewList } from "@/components/courses/review-list";
@@ -124,13 +124,17 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
       courseMode: "Blended",
       startDate: course.startDate?.toISOString().slice(0, 10),
       courseWorkload: `PT${course.weeklyHoursMax}H`,
-      instructor: { "@type": "Person", name: course.instructorName },
+      instructor: {
+        "@type": "Person",
+        name: course.instructorName,
+        ...(course.instructorAvatar ? { image: `${siteUrl}${course.instructorAvatar}` } : {}),
+      },
     },
     offers: {
       "@type": "Offer",
       category: "Paid",
       price: (course.discountPrice ?? course.price).toString(),
-      priceCurrency: "USD",
+      priceCurrency: "TMT",
     },
     ...(reviewCount > 0
       ? { aggregateRating: { "@type": "AggregateRating", ratingValue: avgRating.toFixed(1), reviewCount } }
@@ -259,7 +263,8 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           <div className="mt-12 rounded-2xl border border-border bg-surface p-6">
             <h2 className="font-display text-xl font-bold text-ink">{t.course.instructor}</h2>
             <div className="mt-4 flex items-center gap-4">
-              <Avatar className="h-14 w-14">
+              <Avatar className="h-16 w-16 ring-4 ring-surface-sunken">
+                {course.instructorAvatar && <AvatarImage src={course.instructorAvatar} alt={course.instructorName} className="object-cover" />}
                 <AvatarFallback className="text-base">{initials(course.instructorName)}</AvatarFallback>
               </Avatar>
               <div>
