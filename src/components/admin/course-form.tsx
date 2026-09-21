@@ -235,17 +235,29 @@ export function CourseForm({
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="price">Цена, $</Label>
-              <Input id="price" name="price" type="number" min={0} step="0.01" defaultValue={initialData?.price} required />
+              <Label htmlFor="price">Цена, TMT</Label>
+              <Input
+                id="price"
+                name="price"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                placeholder="например, 1500"
+                defaultValue={initialData?.price}
+                required
+              />
             </div>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="discountPrice">Со скидкой</Label>
+              <Label htmlFor="discountPrice">Со скидкой, TMT</Label>
               <Input
                 id="discountPrice"
                 name="discountPrice"
                 type="number"
+                inputMode="numeric"
                 min={0}
-                step="0.01"
+                step={1}
+                placeholder="Без скидки"
                 defaultValue={initialData?.discountPrice ?? ""}
               />
             </div>
