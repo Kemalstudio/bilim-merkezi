@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Menu, ShieldCheck } from "lucide-react";
+import { Loader2, LogOut, Menu, ShieldCheck } from "lucide-react";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { NavLinks } from "@/components/marketing/nav-links";
@@ -32,6 +32,7 @@ type NavLabels = {
 
 export function MobileNav({ user, labels }: { user: SessionUser; labels: NavLabels }) {
   const [open, setOpen] = useState(false);
+  const [isSigningOut, startSignOut] = useTransition();
   const canModerate = user?.role === "ADMIN" || user?.role === "MODERATOR";
 
   return (
@@ -61,11 +62,16 @@ export function MobileNav({ user, labels }: { user: SessionUser; labels: NavLabe
                 </Link>
               </Button>
             )}
-            <form action={signOutAction}>
-              <Button type="submit" variant="ghost" className="w-full text-rose">
-                {labels.logout}
-              </Button>
-            </form>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-rose"
+              disabled={isSigningOut}
+              onClick={() => startSignOut(() => signOutAction())}
+            >
+              {isSigningOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              {labels.logout}
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
