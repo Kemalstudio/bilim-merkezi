@@ -1,5 +1,6 @@
 import type { Locale } from "@/lib/i18n/config";
 import type { PluralForms, Ui } from "@/lib/i18n/ui/types";
+import { formatMoney } from "@/lib/money";
 
 /** BCP 47 tags: the site's "tm" is Turkmen, whose language code is "tk". */
 export const LANGUAGE_TAGS: Record<Locale, string> = { ru: "ru", en: "en", tm: "tk" };
@@ -29,7 +30,6 @@ export function createFormatter(locale: Locale, t: Ui) {
   const shortDateFormat = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short" });
   const timeFormat = new Intl.DateTimeFormat(tag, { hour: "2-digit", minute: "2-digit" });
   const weekdayFormat = new Intl.DateTimeFormat(tag, { weekday: "short" });
-  const moneyFormat = new Intl.NumberFormat(tag, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
   const word = (count: number, forms: PluralForms) => forms[plural.select(count) as keyof PluralForms] ?? forms.other;
   const count = (value: number, forms: PluralForms) => `${value} ${word(value, forms)}`;
@@ -53,7 +53,7 @@ export function createFormatter(locale: Locale, t: Ui) {
     shortDate: (value: Date | string) => shortDateFormat.format(new Date(value)),
     time: (value: Date | string) => timeFormat.format(new Date(value)),
     weekday: (value: Date | string) => weekdayFormat.format(new Date(value)),
-    currency: (amount: number | string | { toString(): string }) => moneyFormat.format(Number(amount)),
+    currency: (amount: number | string | { toString(): string }) => formatMoney(amount, tag),
     lessonsPerWeek: (n: number) => tpl(t.format.lessonsPerWeek, { count: count(n, t.units.lesson) }),
     weeklyHours: (format: CourseFormatLike) =>
       tpl(t.format.weeklyHours, { range: range(format.weeklyHoursMin, format.weeklyHoursMax) }),
