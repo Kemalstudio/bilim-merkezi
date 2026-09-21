@@ -1,7 +1,8 @@
 "use client";
 
+import { useTransition } from "react";
 import Link from "next/link";
-import { LayoutDashboard, LogOut, ShieldCheck, User as UserIcon } from "lucide-react";
+import { LayoutDashboard, Loader2, LogOut, ShieldCheck, User as UserIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ type MenuLabels = { account: string; myCourses: string; admin: string; logout: s
 export function UserMenu({ user, labels }: { user: SessionUser; labels: MenuLabels }) {
   const canModerate = user.role === "ADMIN" || user.role === "MODERATOR";
   const email = realEmail(user.email);
+  const [isSigningOut, startSignOut] = useTransition();
 
   return (
     <DropdownMenu>
@@ -60,12 +62,21 @@ export function UserMenu({ user, labels }: { user: SessionUser; labels: MenuLabe
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild className="text-rose focus:bg-rose/10">
-          <form action={signOutAction} className="w-full">
-            <button type="submit" className="flex w-full items-center gap-2 text-left cursor-pointer">
-              <LogOut className="h-4 w-4" /> {labels.logout}
-            </button>
-          </form>
+        {/*
+          Not a <form> inside the item: selecting an item closes the menu and unmounts its
+          content before the form could submit, so the click silently did nothing. The menu
+          stays open (preventDefault) to show progress until the redirect lands.
+        */}
+        <DropdownMenuItem
+          className="cursor-pointer text-rose focus:bg-rose/10 focus:text-rose"
+          disabled={isSigningOut}
+          onSelect={(event) => {
+            event.preventDefault();
+            startSignOut(() => signOutAction());
+          }}
+        >
+          {isSigningOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+          {labels.logout}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
