@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requireRole } from "@/lib/rbac";
@@ -189,4 +190,44 @@ export async function toggleCoursePublishedAction(courseId: string, published: b
   revalidatePath("/bilim/admin/courses");
   revalidatePath("/courses");
   invalidateKnowledge();
+}
+
+const priceSchema = z
+  .object({
+    price: z.coerce.number().int("Цена в манатах, без копеек").min(0, "Цена не может быть отрицательной").max(1_000_000),
+    discountPrice: z.coerce.number().int("Цена в манатах, без копеек").min(0).max(1_000_000).nullable(),
+  })
+  .refine((value) => value.discountPrice == null || value.discountPrice < value.price, {
+    message: "Цена со скидкой должна быть меньше обычной",
+  });
+
+/** Quick price change from the course list, without opening the full form. */
+export async function updateCoursePriceAction(
+  courseId: string,
+  input: { price: number | string; discountPrice: number | string | null }
+): Promise<CourseActionState & { price?: string; discountPrice?: string | null }> {
+  const admin = await requireRole("ADMIN", "MODERATOR");
+  const parsed = priceSchema.safeParse({
+    price: input.price,
+    discountPrice: input.discountPrice === "" || input.discountPrice == null ? null : input.discountPrice,
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Проверьте цену" };
+
+  const before = await prisma.course.findUnique({ where: { id: courseId }, select: { price: true, discountPrice: true } });
+  if (!before) return { error: "Курс не найден" };
+
+  const course = await prisma.course.update({
+    where: { id: courseId },
+    data: { price: parsed.data.price, discountPrice: parsed.data.discountPrice },
+    select: { price: true, discountPrice: true, slug: true },
+  });
+  await logAction(admin.id, "course.price_changed", "course", courseId, {
+    from: { price: before.price.toString(), discountPrice: before.discountPrice?.toString() ?? null },
+    to: { price: course.price.toString(), discountPrice: course.discountPrice?.toString() ?? null },
+  });
+  revalidatePath("/bilim/admin/courses");
+  revalidatePath("/courses");
+  revalidatePath(`/courses/${course.slug}`);
+  invalidateKnowledge();
+  return { price: course.price.toString(), discountPrice: course.discountPrice?.toString() ?? null };
 }
