@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import type { OtpPurpose } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { sendSms } from "@/lib/sms";
+import { gatewaySendOtp, gatewayVerifyOtp, isOtpGatewayEnabled } from "@/lib/otp-gateway";
 import { tpl } from "@/lib/i18n/format";
 import { OTP_LENGTH, OTP_TTL_MS, OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/otp-constants";
 
@@ -16,7 +17,8 @@ export const OTP_RESEND_COOLDOWN_MS = OTP_RESEND_COOLDOWN_SECONDS * 1000;
 
 export type IssueResult =
   | { ok: true; expiresAt: Date }
-  | { ok: false; reason: "cooldown"; retryInSeconds: number };
+  | { ok: false; reason: "cooldown"; retryInSeconds: number }
+  | { ok: false; reason: "unavailable" };
 
 function generateCode(): string {
   return String(randomInt(0, 10 ** OTP_LENGTH)).padStart(OTP_LENGTH, "0");
@@ -28,6 +30,9 @@ function generateCode(): string {
  *
  * Any code still outstanding for the same number and purpose is consumed first,
  * so only the newest code can ever be redeemed.
+ *
+ * With the OTP gateway enabled the gateway generates the code and substitutes it
+ * into our text, and we only keep its `otp_id`.
  */
 export async function issueOtp(phone: string, purpose: OtpPurpose, messageTemplate: string): Promise<IssueResult> {
   const now = new Date();
@@ -46,6 +51,23 @@ export async function issueOtp(phone: string, purpose: OtpPurpose, messageTempla
         retryInSeconds: Math.ceil((OTP_RESEND_COOLDOWN_MS - elapsed) / 1000),
       };
     }
+  }
+
+  if (isOtpGatewayEnabled) {
+    const sent = await gatewaySendOtp(phone, tpl(messageTemplate, { minutes: OTP_TTL_MS / 60_000 }));
+    if (!sent.ok) {
+      return sent.reason === "rate_limited"
+        ? { ok: false, reason: "cooldown", retryInSeconds: sent.retryInSeconds }
+        : { ok: false, reason: "unavailable" };
+    }
+
+    await prisma.phoneOtp.updateMany({
+      where: { phone, purpose, consumedAt: null },
+      data: { consumedAt: now },
+    });
+    const expiresAt = new Date(now.getTime() + OTP_TTL_MS);
+    await prisma.phoneOtp.create({ data: { phone, purpose, gatewayOtpId: sent.otpId, expiresAt } });
+    return { ok: true, expiresAt };
   }
 
   await prisma.phoneOtp.updateMany({
@@ -93,7 +115,21 @@ export async function verifyOtp(
     return { ok: false, reason: "locked" };
   }
 
-  if (!(await bcrypt.compare(code, record.codeHash))) {
+  if (record.gatewayOtpId) {
+    const result = await gatewayVerifyOtp(record.gatewayOtpId, code);
+    if (result.ok) {
+      await prisma.phoneOtp.update({ where: { id: record.id }, data: { consumedAt: now } });
+      return { ok: true };
+    }
+    if (result.reason === "invalid") {
+      await prisma.phoneOtp.update({ where: { id: record.id }, data: { attempts: record.attempts + 1 } });
+      return { ok: false, reason: "invalid" };
+    }
+    await prisma.phoneOtp.update({ where: { id: record.id }, data: { consumedAt: now } });
+    return { ok: false, reason: result.reason };
+  }
+
+  if (!record.codeHash || !(await bcrypt.compare(code, record.codeHash))) {
     const attempts = record.attempts + 1;
     await prisma.phoneOtp.update({
       where: { id: record.id },
