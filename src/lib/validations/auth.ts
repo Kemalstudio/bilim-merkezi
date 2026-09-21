@@ -24,7 +24,7 @@ const OTP_PATTERN = new RegExp(String.raw`^\d{${OTP_LENGTH}}$`);
 export const otpCodeField = z.string({ error: "codeFormat" }).trim().regex(OTP_PATTERN, "codeFormat");
 
 // Stored and compared in lower case, so "Name@Mail.com" and "name@mail.com" are one account.
-const emailField = z
+export const emailField = z
   .string({ error: "emailInvalid" })
   .trim()
   .toLowerCase()
