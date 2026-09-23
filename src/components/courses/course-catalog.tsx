@@ -138,7 +138,7 @@ export function CourseCatalog({
                     aria-pressed={selected}
                     onClick={() => update({ level: option || null })}
                     className={cn(
-                      "flex-1 cursor-pointer whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 active:scale-95",
+                      "min-h-10 flex-1 cursor-pointer whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold transition-all duration-200 active:scale-95 sm:min-h-0",
                       selected ? "bg-surface text-ink shadow-glow-sm" : "text-muted hover:text-ink"
                     )}
                   >
@@ -203,7 +203,7 @@ export function CourseCatalog({
                 disabled={empty}
                 onClick={() => update({ category: option.slug || null })}
                 className={cn(
-                  "flex shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
+                  "flex min-h-10 shrink-0 cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-all duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40",
                   selected
                     ? "border-panel bg-panel text-white shadow-glow-sm"
                     : "border-border bg-surface text-ink-soft hover:-translate-y-0.5 hover:border-brand/40 hover:text-ink"
@@ -237,7 +237,7 @@ export function CourseCatalog({
               if (filter.key === "q") setQuery("");
               update({ [filter.key]: null });
             }}
-            className="group flex cursor-pointer items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand-ink transition-colors hover:bg-brand/20"
+            className="group flex min-h-9 cursor-pointer items-center gap-1.5 rounded-full bg-brand/10 px-3 py-1.5 text-xs font-bold text-brand-ink transition-colors hover:bg-brand/20 sm:min-h-0"
           >
             {filter.label}
             <X aria-hidden className="h-3 w-3 transition-transform group-hover:rotate-90" />
@@ -251,7 +251,7 @@ export function CourseCatalog({
               setQuery("");
               update({ q: null, category: null, level: null, age: null, duration: null });
             }}
-            className="cursor-pointer text-xs font-bold text-muted underline-offset-4 hover:text-ink hover:underline"
+            className="min-h-9 cursor-pointer text-xs font-bold text-muted underline-offset-4 hover:text-ink hover:underline sm:min-h-0"
           >
             {t.catalog.resetAll}
           </button>
@@ -267,7 +267,7 @@ export function CourseCatalog({
               aria-pressed={view === value}
               onClick={() => update({ view: value === "grid" ? null : value })}
               className={cn(
-                "flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95",
+                "flex min-h-10 cursor-pointer items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all duration-200 active:scale-95 sm:min-h-0",
                 view === value ? "bg-surface text-ink shadow-glow-sm" : "text-muted hover:text-ink"
               )}
             >
