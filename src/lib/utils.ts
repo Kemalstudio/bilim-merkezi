@@ -19,6 +19,15 @@ export function formatDate(date: Date | string) {
   }).format(new Date(date));
 }
 
+export function formatDateTime(date: Date | string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(date));
+}
+
 export function formatShortDate(date: Date | string) {
   return new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
