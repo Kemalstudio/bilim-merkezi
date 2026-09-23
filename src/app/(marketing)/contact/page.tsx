@@ -68,7 +68,7 @@ export default async function ContactPage() {
                 {href ? (
                   <a
                     href={href}
-                    className="mt-2 block break-words font-display text-lg font-bold tracking-[-0.03em] text-ink hover:underline"
+                    className="mt-1 block min-h-10 break-words py-1.5 font-display text-lg font-bold tracking-[-0.03em] text-ink hover:underline"
                   >
                     {value}
                   </a>
