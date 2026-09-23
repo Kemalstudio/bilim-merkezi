@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 import { auth, updateSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { receiveUpload } from "@/lib/uploads";
+import { processAvatar } from "@/lib/avatar-image";
 import { saveUpload } from "@/lib/storage";
 import { logAction } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
@@ -10,8 +10,6 @@ import { rateLimit } from "@/lib/rate-limit";
 // SVG is deliberately absent: it can carry script and these files are served from our origin.
 const IMAGE_TYPES = ["png", "jpg", "gif", "webp"] as const;
 const MAX_INPUT_BYTES = 8 * 1024 * 1024;
-/** Avatars are shown at most ~128 px wide; 512 keeps them sharp on dense screens. */
-const AVATAR_SIZE = 512;
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -40,11 +38,7 @@ export async function POST(request: Request) {
 
   let bytes: Buffer;
   try {
-    bytes = await sharp(upload.file.bytes, { limitInputPixels: 40_000_000 })
-      .rotate() // apply the camera's orientation before EXIF is dropped
-      .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover", position: "attention" })
-      .webp({ quality: 86 })
-      .toBuffer();
+    bytes = await processAvatar(upload.file.bytes);
   } catch {
     return NextResponse.json({ error: "This image could not be processed" }, { status: 400, headers: noStore });
   }
