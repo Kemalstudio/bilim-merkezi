@@ -6,7 +6,16 @@ import { deleteAccountAction, requestSecurityCodeAction } from "@/actions/settin
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogClose,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/ui/responsive-dialog";
 import { SmsCodeStep } from "@/components/account/settings/sms-code-step";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -30,17 +39,17 @@ export function DeleteAccount({ hasPassword, hasPhone, isStaff }: { hasPassword:
   const needsCode = !hasPassword && hasPhone;
 
   return (
-    <Dialog open={open} onOpenChange={(next) => !isPending && setOpen(next)}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog open={open} onOpenChange={(next) => !isPending && setOpen(next)}>
+      <ResponsiveDialogTrigger asChild>
         <Button type="button" variant="outline" className="self-start border-rose/40 text-rose hover:border-rose hover:bg-rose/5">
           {t.settings.data.deleteButton}
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t.settings.data.deleteConfirmTitle}</DialogTitle>
-          <DialogDescription>{t.settings.data.deleteConfirmText}</DialogDescription>
-        </DialogHeader>
+      </ResponsiveDialogTrigger>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{t.settings.data.deleteConfirmTitle}</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>{t.settings.data.deleteConfirmText}</ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
         <form action={formAction} className="flex flex-col gap-4">
           {hasPassword && (
             <div className="flex flex-col gap-1.5">
@@ -66,18 +75,18 @@ export function DeleteAccount({ hasPassword, hasPhone, isStaff }: { hasPassword:
             />
             {t.settings.data.deleteCheckbox}
           </label>
-          <DialogFooter>
-            <DialogClose asChild>
+          <ResponsiveDialogFooter>
+            <ResponsiveDialogClose asChild>
               <Button type="button" variant="outline" disabled={isPending}>
                 {t.settings.profile.cancel}
               </Button>
-            </DialogClose>
+            </ResponsiveDialogClose>
             <Button type="submit" variant="destructive" disabled={isPending || !confirmed}>
               {isPending ? t.common.saving : t.settings.data.deleteSubmit}
             </Button>
-          </DialogFooter>
+          </ResponsiveDialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
