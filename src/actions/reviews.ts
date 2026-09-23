@@ -39,6 +39,8 @@ export async function createReviewAction(
     select: { slug: true },
   });
 
+  // Every submission — new or edited — starts PENDING so a moderator sees it before it goes
+  // public; this also stops an already-approved review being swapped for spam after the fact.
   await prisma.review.upsert({
     where: { userId_courseId: { userId: user.id, courseId: parsed.data.courseId } },
     create: {
@@ -46,10 +48,12 @@ export async function createReviewAction(
       courseId: parsed.data.courseId,
       rating: parsed.data.rating,
       comment: parsed.data.comment,
+      status: "PENDING",
     },
     update: {
       rating: parsed.data.rating,
       comment: parsed.data.comment,
+      status: "PENDING",
     },
   });
 
