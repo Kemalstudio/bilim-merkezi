@@ -52,23 +52,23 @@ export async function SiteFooter() {
               <span className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-accent" /> {contacts.address}
               </span>
-              <a href={`mailto:${contacts.email}`} className="flex items-center gap-2 transition-colors hover:text-accent">
+              <a href={`mailto:${contacts.email}`} className="flex min-h-10 items-center gap-2 transition-colors hover:text-accent sm:min-h-0">
                 <Mail className="h-4 w-4 text-accent" /> {contacts.email}
               </a>
-              <a href={phoneHref(contacts.phone)} className="flex items-center gap-2 transition-colors hover:text-accent">
+              <a href={phoneHref(contacts.phone)} className="flex min-h-10 items-center gap-2 transition-colors hover:text-accent sm:min-h-0">
                 <Phone className="h-4 w-4 text-accent" /> {contacts.phone}
               </a>
             </div>
           </div>
 
           {columns.map((col) => (
-            <div key={col.title} className="flex flex-col gap-3">
-              <h4 className="font-display text-sm font-bold text-white">{col.title}</h4>
+            <div key={col.title} className="flex flex-col gap-0.5 sm:gap-2.5">
+              <h4 className="mb-1.5 font-display text-sm font-bold text-white sm:mb-0">{col.title}</h4>
               {col.links.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="group flex items-center gap-1 text-sm text-white/45 transition-colors hover:text-accent"
+                  className="group flex min-h-10 items-center gap-1 text-sm text-white/60 transition-colors hover:text-accent sm:min-h-0"
                 >
                   {link.label}
                   <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
