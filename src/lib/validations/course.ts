@@ -30,12 +30,17 @@ export const courseSchema = z
     weeklyHoursMin: z.coerce.number().int().min(1, "Часов в неделю: минимум 1").max(60, "Часов в неделю: максимум 60"),
     weeklyHoursMax: z.coerce.number().int().min(1, "Часов в неделю: минимум 1").max(60, "Часов в неделю: максимум 60"),
     startDate: z.coerce.date().nullish(),
-    price: z.coerce.number().nonnegative("Цена не может быть отрицательной"),
-    discountPrice: z.coerce.number().nonnegative().nullish(),
+    // Prices are whole manat (TMT).
+    price: z.coerce.number().int("Цена в манатах — целое число").min(0, "Цена не может быть отрицательной").max(1_000_000, "Слишком большая цена"),
+    discountPrice: z.coerce.number().int("Цена в манатах — целое число").min(0).max(1_000_000).nullish(),
     categoryId: z.string().min(1, "Выберите категорию"),
     instructorName: z.string().min(2, "Укажите имя преподавателя"),
     instructorTitle: z.string().optional(),
     instructorBio: z.string().optional(),
+    instructorAvatar: z
+      .string()
+      .regex(/^\/(uploads\/avatars|files\/avatars|instructors)\/[\w-]+\.(png|jpe?g|gif|webp)$/i, "Загрузите фото через форму")
+      .optional(),
     coverImage: z
       .string()
       .regex(/^\/(uploads|files\/covers)\/[\w-]+\.(png|jpe?g|gif|webp)$/i, "Загрузите обложку через форму")
