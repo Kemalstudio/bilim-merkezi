@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LottieIcon } from "@/components/shared/lottie-icon";
+import { ConfettiBurst } from "@/components/shared/confetti-burst";
 import { requireUser } from "@/lib/rbac";
 import { stripe } from "@/lib/stripe";
 import { fulfillCheckoutSession, type FulfillResult } from "@/lib/checkout";
@@ -45,6 +46,7 @@ export default async function CheckoutSuccessPage({
   if (paid) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
+        <ConfettiBurst id={sessionId ?? "paid"} />
         {/* Plays once and stops on the finished check, before the file's own fade-out. */}
         <LottieIcon src="/lottie/success.json" trigger="once" playTo={0.7} className="h-28 w-28" />
         <h1 className="font-display text-2xl font-bold text-ink">{c.successTitle}</h1>
