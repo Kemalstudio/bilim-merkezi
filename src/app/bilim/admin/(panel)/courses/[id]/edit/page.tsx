@@ -45,6 +45,7 @@ export default async function EditCoursePage({ params }: { params: Promise<{ id:
             instructorName: course.instructorName,
             instructorTitle: course.instructorTitle,
             instructorBio: course.instructorBio,
+            instructorAvatar: course.instructorAvatar,
             coverImage: course.coverImage,
             published: course.published,
             featured: course.featured,
