@@ -36,6 +36,12 @@ enum DiscountType {
   FIXED
 }
 
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  HIDDEN
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -306,10 +312,13 @@ model LibraryResource {
 }
 
 model Review {
-  id        String   @id @default(cuid())
+  id        String       @id @default(cuid())
   rating    Int
-  comment   String?  @db.Text
-  createdAt DateTime @default(now())
+  comment   String?      @db.Text
+  // DB default keeps reviews written before moderation existed visible; the
+  // create/update action itself always sets PENDING for new submissions.
+  status    ReviewStatus @default(APPROVED)
+  createdAt DateTime     @default(now())
 
   userId   String
   user     User   @relation(fields: [userId], references: [id])
@@ -318,6 +327,7 @@ model Review {
 
   @@unique([userId, courseId])
   @@index([courseId, createdAt])
+  @@index([status, createdAt])
   @@map("reviews")
 }
 
