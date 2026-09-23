@@ -9,6 +9,7 @@ import { weekLoad } from "@/lib/course-schedule";
 import { siteUrl } from "@/lib/site-url";
 import { getI18n } from "@/lib/i18n/server";
 import { LANGUAGE_TAGS, tpl } from "@/lib/i18n/format";
+import { ShareButton } from "@/components/courses/share-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -211,6 +212,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
                 <CalendarDays aria-hidden className="h-4 w-4" /> {tpl(t.format.start, { date: f.date(course.startDate) })}
               </span>
             )}
+            <ShareButton title={course.title} path={`/courses/${course.slug}`} className="sm:ml-auto" />
           </div>
 
           <nav aria-label={t.course.sectionsLabel} className="-mx-1 mt-8 flex gap-2 overflow-x-auto px-1 pb-1 text-sm font-semibold">
@@ -218,7 +220,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
               <a
                 key={href}
                 href={href}
-                className="shrink-0 rounded-full border border-border bg-surface px-3.5 py-1.5 text-ink-soft transition-colors hover:border-brand/40 hover:text-ink"
+                className="flex min-h-10 shrink-0 items-center rounded-full border border-border bg-surface px-4 py-1.5 text-ink-soft transition-colors hover:border-brand/40 hover:text-ink sm:min-h-9"
               >
                 {label}
               </a>
