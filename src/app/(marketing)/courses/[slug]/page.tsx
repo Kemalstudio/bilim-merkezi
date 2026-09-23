@@ -24,6 +24,7 @@ import { LevelLadder } from "@/components/courses/level-ladder";
 import { RatingSummary } from "@/components/courses/rating-summary";
 import { ReviewForm } from "@/components/courses/review-form";
 import { EnrollmentDialog } from "@/components/courses/enrollment-dialog";
+import { ScheduleTimeline } from "@/components/account/schedule-timeline";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -51,6 +52,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
       category: true,
       modules: { orderBy: { position: "asc" }, include: { lessons: { orderBy: { position: "asc" } } } },
       reviews: { include: { user: { select: { name: true } } }, orderBy: { createdAt: "desc" } },
+      scheduleEvents: { where: { startsAt: { gte: new Date() } }, orderBy: { startsAt: "asc" }, take: 5 },
       _count: { select: { enrollments: true, libraryResources: { where: { published: true } } } },
     },
   });
@@ -60,8 +62,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const canPreviewUnpublished = session?.user.role === "ADMIN" || session?.user.role === "MODERATOR";
   if (!course.published && !canPreviewUnpublished) notFound();
 
-  const reviewCount = course.reviews.length;
-  const avgRating = reviewCount > 0 ? course.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
+  // Moderation grandfathers reviews written before the status column existed (they default to
+  // APPROVED); only newly submitted ones start PENDING and wait for an admin to publish them.
+  const visibleReviews = course.reviews.filter((review) => review.status === "APPROVED");
+  const reviewCount = visibleReviews.length;
+  const avgRating = reviewCount > 0 ? visibleReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount : 0;
   const hasDiscount = course.discountPrice != null && Number(course.discountPrice) < Number(course.price);
   const format = {
     lessonsPerWeek: course.lessonsPerWeek,
@@ -148,6 +153,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
     ["#program", t.course.sections.program],
     ...(course.track ? [["#levels", t.course.sections.levels]] : []),
     ["#grading", t.course.sections.grading],
+    ...(course.scheduleEvents.length > 0 ? [["#schedule", t.course.sections.schedule]] : []),
     ["#reviews", t.course.sections.reviews],
   ];
 
@@ -277,20 +283,44 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
             {course.instructorBio && <p className="mt-4 text-sm text-ink-soft">{course.instructorBio}</p>}
           </div>
 
+          {course.scheduleEvents.length > 0 && (
+            <div className="mt-12 scroll-mt-28" id="schedule">
+              <h2 className="font-display text-xl font-bold text-ink">{t.course.scheduleTitle}</h2>
+              <div className="mt-4">
+                <ScheduleTimeline
+                  items={course.scheduleEvents.map((event) => ({
+                    id: event.id,
+                    title: event.title,
+                    courseTitle: course.title,
+                    startsAt: event.startsAt.toISOString(),
+                    endsAt: event.endsAt?.toISOString() ?? null,
+                    location: event.location,
+                    childName: null,
+                  }))}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="mt-10 scroll-mt-28" id="reviews">
             <h2 className="font-display text-xl font-bold text-ink">
               {t.course.reviewsTitle} {reviewCount > 0 && `(${reviewCount})`}
             </h2>
             <div className="mt-4">
-              <RatingSummary ratings={course.reviews.map((review) => review.rating)} />
+              <RatingSummary ratings={visibleReviews.map((review) => review.rating)} />
             </div>
             <div className="mt-6">
               {isActive && (
                 <div className="mb-6">
+                  {myReview && myReview.status !== "APPROVED" && (
+                    <p className="mb-3 rounded-xl bg-surface-sunken px-4 py-2.5 text-sm text-ink-soft">
+                      {myReview.status === "PENDING" ? t.reviews.pendingNotice : t.reviews.hiddenNotice}
+                    </p>
+                  )}
                   <ReviewForm courseId={course.id} hasReviewed={Boolean(myReview)} />
                 </div>
               )}
-              <ReviewList reviews={course.reviews} />
+              <ReviewList reviews={visibleReviews} />
             </div>
           </div>
         </div>
