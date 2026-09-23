@@ -37,6 +37,7 @@ function parseCourseForm(formData: FormData) {
     instructorName: formData.get("instructorName"),
     instructorTitle: formData.get("instructorTitle") || undefined,
     instructorBio: formData.get("instructorBio") || undefined,
+    instructorAvatar: formData.get("instructorAvatar") || undefined,
     coverImage: formData.get("coverImage") || undefined,
     published: formData.get("published") === "on",
     featured: formData.get("featured") === "on",
@@ -74,6 +75,8 @@ function courseFields(data: CourseInput) {
     instructorName: data.instructorName,
     instructorTitle: data.instructorTitle,
     instructorBio: data.instructorBio,
+    // Cleared in the form means "no photo", not "leave the old one".
+    instructorAvatar: data.instructorAvatar ?? null,
     coverImage: data.coverImage,
     published: data.published,
     featured: data.featured,
