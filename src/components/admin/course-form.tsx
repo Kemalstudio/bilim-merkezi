@@ -33,6 +33,7 @@ export type CourseFormValues = {
   instructorName: string;
   instructorTitle?: string | null;
   instructorBio?: string | null;
+  instructorAvatar?: string | null;
   coverImage?: string | null;
   published: boolean;
   featured: boolean;
@@ -268,6 +269,10 @@ export function CourseForm({
           <div className="flex flex-col gap-1.5">
             <Label>Обложка курса</Label>
             <ImageUpload name="coverImage" defaultValue={initialData?.coverImage} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Фото преподавателя</Label>
+            <ImageUpload name="instructorAvatar" kind="avatar" defaultValue={initialData?.instructorAvatar} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="instructorName">Имя преподавателя</Label>
