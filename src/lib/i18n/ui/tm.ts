@@ -172,6 +172,9 @@ const tm: Ui = {
     breadcrumbs: "Nawigasiýa",
     draft: "Garalama",
     newCourse: "täze kurs",
+    share: "Paýlaşmak",
+    linkCopied: "Çykgyt göçürildi",
+    linkCopiedShort: "Göçürildi",
     sectionsLabel: "Kursuň bölümleri",
     sections: {
       about: "Kurs barada",
