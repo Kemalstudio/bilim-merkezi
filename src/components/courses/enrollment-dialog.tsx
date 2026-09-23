@@ -12,13 +12,13 @@ import { DocumentUpload } from "@/components/courses/document-upload";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogTrigger,
+} from "@/components/ui/responsive-dialog";
 
 export type EnrollableChild = {
   id: string;
@@ -94,19 +94,19 @@ export function EnrollmentDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={reset}>
-      <DialogTrigger asChild>
+    <ResponsiveDialog open={open} onOpenChange={reset}>
+      <ResponsiveDialogTrigger asChild>
         <Button size="lg" variant={variant} className="w-full">
           {label}
         </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{step === 1 ? e.stepChild : e.stepDocument}</DialogTitle>
-          <DialogDescription>
+      </ResponsiveDialogTrigger>
+      <ResponsiveDialogContent>
+        <ResponsiveDialogHeader>
+          <ResponsiveDialogTitle>{step === 1 ? e.stepChild : e.stepDocument}</ResponsiveDialogTitle>
+          <ResponsiveDialogDescription>
             {step === 1 ? e.stepChildHint : e.stepDocumentHint}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveDialogDescription>
+        </ResponsiveDialogHeader>
 
         <StepIndicator step={step} />
 
@@ -224,8 +224,8 @@ export function EnrollmentDialog({
             </div>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveDialogContent>
+    </ResponsiveDialog>
   );
 }
 
