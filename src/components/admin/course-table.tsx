@@ -95,9 +95,9 @@ export function CourseTable({ courses }: { courses: CourseRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Курс</TableHead>
-            <TableHead>Категория</TableHead>
+            <TableHead className="hidden md:table-cell">Категория</TableHead>
             <TableHead>Цена</TableHead>
-            <TableHead>Записей</TableHead>
+            <TableHead className="hidden sm:table-cell">Записей</TableHead>
             <TableHead>Опубликован</TableHead>
             <TableHead className="text-right">Действия</TableHead>
           </TableRow>
@@ -105,8 +105,8 @@ export function CourseTable({ courses }: { courses: CourseRow[] }) {
         <TableBody>
           {rows.map((course) => (
             <TableRow key={course.id}>
-              <TableCell className="max-w-xs truncate font-semibold text-ink">{course.title}</TableCell>
-              <TableCell>
+              <TableCell className="max-w-[10rem] truncate font-semibold text-ink sm:max-w-xs">{course.title}</TableCell>
+              <TableCell className="hidden md:table-cell">
                 <Badge variant="neutral">{course.category.name}</Badge>
               </TableCell>
               <TableCell>
@@ -126,7 +126,7 @@ export function CourseTable({ courses }: { courses: CourseRow[] }) {
                   )}
                 </button>
               </TableCell>
-              <TableCell>{course.enrollmentCount}</TableCell>
+              <TableCell className="hidden sm:table-cell">{course.enrollmentCount}</TableCell>
               <TableCell>
                 <Switch
                   checked={course.published}
