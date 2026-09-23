@@ -17,7 +17,7 @@ export function Logo({ className, tone = "default" }: { className?: string; tone
         </span>
         <span
           className={cn(
-            "mt-[3px] text-[0.54rem] font-bold uppercase tracking-[0.3em]",
+            "mt-[3px] text-[0.6rem] font-bold uppercase tracking-[0.28em]",
             light ? "text-white/60" : "text-muted"
           )}
         >
