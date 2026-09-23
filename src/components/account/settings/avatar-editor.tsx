@@ -7,7 +7,14 @@ import { Camera, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogDescription,
+  ResponsiveDialogFooter,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+} from "@/components/ui/responsive-dialog";
 import { initials } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -158,12 +165,12 @@ export function AvatarEditor({ name, image }: { name: string; image: string | nu
 
       <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" onChange={handleFile} />
 
-      <Dialog open={source !== null} onOpenChange={(open) => !open && !isPending && closeDialog()}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{t.settings.profile.cropTitle}</DialogTitle>
-            <DialogDescription>{t.settings.profile.cropHint}</DialogDescription>
-          </DialogHeader>
+      <ResponsiveDialog open={source !== null} onOpenChange={(open) => !open && !isPending && closeDialog()}>
+        <ResponsiveDialogContent className="max-w-md">
+          <ResponsiveDialogHeader>
+            <ResponsiveDialogTitle>{t.settings.profile.cropTitle}</ResponsiveDialogTitle>
+            <ResponsiveDialogDescription>{t.settings.profile.cropHint}</ResponsiveDialogDescription>
+          </ResponsiveDialogHeader>
           <div className="relative h-72 w-full overflow-hidden rounded-2xl bg-ink sm:h-80">
             {source && (
               <Cropper
@@ -191,16 +198,16 @@ export function AvatarEditor({ name, image }: { name: string; image: string | nu
               className="h-2 flex-1 cursor-pointer accent-[var(--color-brand)]"
             />
           </label>
-          <DialogFooter>
+          <ResponsiveDialogFooter>
             <Button type="button" variant="outline" onClick={closeDialog} disabled={isPending}>
               {t.settings.profile.cancel}
             </Button>
             <Button type="button" onClick={upload} disabled={isPending || !area}>
               {isPending ? t.settings.profile.uploading : t.settings.profile.apply}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveDialogFooter>
+        </ResponsiveDialogContent>
+      </ResponsiveDialog>
     </div>
   );
 }
