@@ -25,7 +25,7 @@ export function ReviewForm({ courseId, hasReviewed }: { courseId: string; hasRev
     if (state?.error) {
       toast.error(state.error);
     } else {
-      toast.success(t.reviews.thanks);
+      toast.success(t.reviews.thanksPending);
       formRef.current?.reset();
     }
   }, [isPending, state, t]);
