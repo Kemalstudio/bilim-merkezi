@@ -4,35 +4,69 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { registerAction, requestRegistrationCodeAction, googleSignInAction } from "@/actions/auth";
+import {
+  registerAction,
+  registerWithEmailAction,
+  requestRegistrationCodeAction,
+  googleSignInAction,
+} from "@/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PhoneField } from "@/components/auth/phone-field";
 import { OtpInput } from "@/components/auth/otp-input";
 import { OTP_RESEND_COOLDOWN_SECONDS } from "@/lib/otp-constants";
 import { tpl } from "@/lib/i18n/format";
 import { useI18n } from "@/components/i18n-provider";
 
-type Details = { name: string; phone: string; email: string; password: string; confirmPassword: string };
+type Details = {
+  name: string;
+  phone: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
 
-const EMPTY_DETAILS: Details = { name: "", phone: "", email: "", password: "", confirmPassword: "" };
+const EMPTY_DETAILS: Details = {
+  name: "",
+  phone: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+};
 
 /**
- * Two steps: the parent's details, then the code texted to their number. The account is
- * created only in the second step, so a number nobody can receive SMS on never gets one.
+ * Two ways in. By SMS: the parent's details, then the code texted to their number — the
+ * account is created only in the second step, so a number nobody can receive SMS on never
+ * gets one. By email: email and password, the account is created at once with no code.
  */
-export function RegisterForm({ googleEnabled, callbackUrl }: { googleEnabled: boolean; callbackUrl?: string }) {
+export function RegisterForm({
+  googleEnabled,
+  callbackUrl,
+}: {
+  googleEnabled: boolean;
+  callbackUrl?: string;
+}) {
   const { t } = useI18n();
-  const [state, formAction, isConfirming] = useActionState(registerAction, undefined);
+  const [state, formAction, isConfirming] = useActionState(
+    registerAction,
+    undefined,
+  );
   const [details, setDetails] = useState<Details>(EMPTY_DETAILS);
-  const [sentTo, setSentTo] = useState<{ phone: string; maskedPhone: string } | null>(null);
+  const [sentTo, setSentTo] = useState<{
+    phone: string;
+    maskedPhone: string;
+  } | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [isRequesting, startRequest] = useTransition();
 
   function requestCode(formData: FormData) {
     const entered = Object.fromEntries(
-      Object.keys(EMPTY_DETAILS).map((key) => [key, String(formData.get(key) ?? "")])
+      Object.keys(EMPTY_DETAILS).map((key) => [
+        key,
+        String(formData.get(key) ?? ""),
+      ]),
     ) as Details;
     setDetails(entered);
 
@@ -50,7 +84,8 @@ export function RegisterForm({ googleEnabled, callbackUrl }: { googleEnabled: bo
 
   function resendCode() {
     const formData = new FormData();
-    for (const [key, value] of Object.entries(details)) formData.set(key, value);
+    for (const [key, value] of Object.entries(details))
+      formData.set(key, value);
     requestCode(formData);
   }
 
@@ -67,30 +102,49 @@ export function RegisterForm({ googleEnabled, callbackUrl }: { googleEnabled: bo
   return (
     <div className="flex flex-col gap-6">
       <div className="text-center">
-        <h1 className="font-display text-2xl font-bold text-ink">{t.auth.registerTitle}</h1>
+        <h1 className="font-display text-2xl font-bold text-ink">
+          {t.auth.registerTitle}
+        </h1>
         <p className="mt-1 text-sm text-muted">
-          {sentTo ? tpl(t.auth.registerCodeStep, { phone: sentTo.maskedPhone }) : t.auth.registerSubtitle}
+          {sentTo
+            ? tpl(t.auth.registerCodeStep, { phone: sentTo.maskedPhone })
+            : t.auth.registerSubtitle}
         </p>
       </div>
 
       {sentTo ? (
         <>
           <div className="flex items-start gap-3 rounded-xl bg-surface-sunken p-3">
-            <ShieldCheck aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-emerald" />
-            <p className="text-xs text-ink-soft">{tpl(t.auth.codeSentTo, { phone: sentTo.maskedPhone })}</p>
+            <ShieldCheck
+              aria-hidden
+              className="mt-0.5 h-4 w-4 shrink-0 text-emerald"
+            />
+            <p className="text-xs text-ink-soft">
+              {tpl(t.auth.codeSentTo, { phone: sentTo.maskedPhone })}
+            </p>
           </div>
 
           <form action={formAction} className="flex flex-col gap-4">
-            {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
+            {callbackUrl && (
+              <input type="hidden" name="callbackUrl" value={callbackUrl} />
+            )}
             {Object.entries(details).map(([key, value]) => (
-              <input key={key} type="hidden" name={key} value={key === "phone" ? sentTo.phone : value} />
+              <input
+                key={key}
+                type="hidden"
+                name={key}
+                value={key === "phone" ? sentTo.phone : value}
+              />
             ))}
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="code">{t.auth.code}</Label>
               <OtpInput disabled={isConfirming} />
             </div>
             {state?.error && (
-              <p role="alert" className="rounded-xl bg-rose/10 px-4 py-3 text-sm font-medium text-rose">
+              <p
+                role="alert"
+                className="rounded-xl bg-rose/10 px-4 py-3 text-sm font-medium text-rose"
+              >
                 {state.error}
               </p>
             )}
@@ -113,7 +167,9 @@ export function RegisterForm({ googleEnabled, callbackUrl }: { googleEnabled: bo
               disabled={cooldown > 0 || isRequesting}
               className="font-semibold text-brand-ink transition-colors hover:underline disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
             >
-              {cooldown > 0 ? tpl(t.auth.resendIn, { seconds: cooldown }) : t.auth.resend}
+              {cooldown > 0
+                ? tpl(t.auth.resendIn, { seconds: cooldown })
+                : t.auth.resend}
             </button>
           </div>
         </>
@@ -122,89 +178,197 @@ export function RegisterForm({ googleEnabled, callbackUrl }: { googleEnabled: bo
           {googleEnabled && (
             <>
               <form action={googleSignInAction}>
-                {callbackUrl && <input type="hidden" name="callbackUrl" value={callbackUrl} />}
+                {callbackUrl && (
+                  <input type="hidden" name="callbackUrl" value={callbackUrl} />
+                )}
                 <Button type="submit" variant="outline" className="w-full">
                   {t.auth.googleRegister}
                 </Button>
               </form>
               <div className="flex items-center gap-3 text-xs text-muted">
-                <span className="h-px flex-1 bg-border" /> {t.auth.or} <span className="h-px flex-1 bg-border" />
+                <span className="h-px flex-1 bg-border" /> {t.auth.or}{" "}
+                <span className="h-px flex-1 bg-border" />
               </div>
             </>
           )}
 
-          <form action={requestCode} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="name">{t.auth.yourName}</Label>
-              <Input
-                id="name"
-                name="name"
-                defaultValue={details.name}
-                placeholder={t.auth.namePlaceholder}
-                autoComplete="name"
-                minLength={2}
-                required
-                disabled={isRequesting}
-              />
-            </div>
-            <PhoneField defaultValue={details.phone} disabled={isRequesting} />
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">{t.auth.emailOptional}</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                defaultValue={details.email}
-                placeholder="you@example.com"
-                autoComplete="email"
-                disabled={isRequesting}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">{t.auth.password}</Label>
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                defaultValue={details.password}
-                placeholder={t.auth.passwordPlaceholder}
-                autoComplete="new-password"
-                minLength={8}
-                maxLength={72}
-                required
-                disabled={isRequesting}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="confirmPassword">{t.auth.repeatPassword}</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                defaultValue={details.confirmPassword}
-                placeholder="••••••••"
-                autoComplete="new-password"
-                required
-                disabled={isRequesting}
-              />
-            </div>
-            <p className="text-xs text-muted">{t.auth.registerSmsHint}</p>
-            <Button type="submit" disabled={isRequesting} className="mt-1">
-              {isRequesting ? t.auth.sendingCode : t.auth.getCode}
-            </Button>
-          </form>
+          <Tabs defaultValue="sms">
+            <TabsList className="w-full">
+              <TabsTrigger value="sms" className="flex-1">
+                {t.auth.registerTabSms}
+              </TabsTrigger>
+              <TabsTrigger value="email" className="flex-1">
+                {t.auth.registerTabEmail}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="email">
+              <EmailRegisterForm callbackUrl={callbackUrl} />
+            </TabsContent>
+
+            <TabsContent value="sms">
+              <form action={requestCode} className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="name">{t.auth.yourName}</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    defaultValue={details.name}
+                    placeholder={t.auth.namePlaceholder}
+                    autoComplete="name"
+                    minLength={2}
+                    required
+                    disabled={isRequesting}
+                  />
+                </div>
+                <PhoneField
+                  defaultValue={details.phone}
+                  disabled={isRequesting}
+                />
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="email">{t.auth.emailOptional}</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    defaultValue={details.email}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    disabled={isRequesting}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="password">{t.auth.password}</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    defaultValue={details.password}
+                    placeholder={t.auth.passwordPlaceholder}
+                    autoComplete="new-password"
+                    minLength={8}
+                    maxLength={72}
+                    required
+                    disabled={isRequesting}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="confirmPassword">
+                    {t.auth.repeatPassword}
+                  </Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    defaultValue={details.confirmPassword}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                    required
+                    disabled={isRequesting}
+                  />
+                </div>
+                <p className="text-xs text-muted">{t.auth.registerSmsHint}</p>
+                <Button type="submit" disabled={isRequesting} className="mt-1">
+                  {isRequesting ? t.auth.sendingCode : t.auth.getCode}
+                </Button>
+              </form>
+            </TabsContent>
+          </Tabs>
         </>
       )}
 
       <p className="text-center text-sm text-muted">
         {t.auth.haveAccount}{" "}
         <Link
-          href={callbackUrl ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}` : "/login"}
+          href={
+            callbackUrl
+              ? `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+              : "/login"
+          }
           className="font-semibold text-brand-ink hover:underline"
         >
           {t.auth.signIn}
         </Link>
       </p>
     </div>
+  );
+}
+
+/** Email and password, no code: the account is created and signed in on submit. */
+function EmailRegisterForm({ callbackUrl }: { callbackUrl?: string }) {
+  const { t } = useI18n();
+  const [state, formAction, isPending] = useActionState(
+    registerWithEmailAction,
+    undefined,
+  );
+
+  return (
+    <form action={formAction} className="flex flex-col gap-4">
+      {callbackUrl && (
+        <input type="hidden" name="callbackUrl" value={callbackUrl} />
+      )}
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email-name">{t.auth.yourName}</Label>
+        <Input
+          id="email-name"
+          name="name"
+          placeholder={t.auth.namePlaceholder}
+          autoComplete="name"
+          minLength={2}
+          required
+          disabled={isPending}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email-email">{t.auth.email}</Label>
+        <Input
+          id="email-email"
+          name="email"
+          type="email"
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+          disabled={isPending}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email-password">{t.auth.password}</Label>
+        <Input
+          id="email-password"
+          name="password"
+          type="password"
+          placeholder={t.auth.passwordPlaceholder}
+          autoComplete="new-password"
+          minLength={8}
+          maxLength={72}
+          required
+          disabled={isPending}
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="email-confirmPassword">{t.auth.repeatPassword}</Label>
+        <Input
+          id="email-confirmPassword"
+          name="confirmPassword"
+          type="password"
+          placeholder="••••••••"
+          autoComplete="new-password"
+          required
+          disabled={isPending}
+        />
+      </div>
+      <p className="text-xs text-muted">{t.auth.registerEmailHint}</p>
+      {state?.error && (
+        <p
+          role="alert"
+          className="rounded-xl bg-rose/10 px-4 py-3 text-sm font-medium text-rose"
+        >
+          {state.error}
+        </p>
+      )}
+      <Button type="submit" disabled={isPending} className="mt-1">
+        {isPending ? t.auth.creating : t.auth.createAccount}
+      </Button>
+    </form>
   );
 }
