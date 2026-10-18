@@ -40,11 +40,14 @@ export function EnrollmentDialog({
   label,
   variant = "primary",
   profiles,
+  paymentsEnabled = true,
 }: {
   courseId: string;
   label: string;
   variant?: "primary" | "outline";
   profiles: EnrollableChild[];
+  /** Off while the centre tests the site: the seat is confirmed without a payment page. */
+  paymentsEnabled?: boolean;
 }) {
   const { t } = useI18n();
   const e = t.enroll;
@@ -202,6 +205,10 @@ export function EnrollmentDialog({
               />
             </div>
 
+            {!paymentsEnabled && (
+              <p className="rounded-xl bg-amber/10 px-4 py-3 text-sm font-medium text-ink-soft">{e.paymentsOffNote}</p>
+            )}
+
             {error && (
               <p role="alert" className="rounded-xl bg-rose/10 px-4 py-3 text-sm font-medium text-rose">
                 {error}
@@ -219,7 +226,13 @@ export function EnrollmentDialog({
                 <ArrowLeft aria-hidden className="h-4 w-4" /> {t.common.back}
               </Button>
               <Button type="submit" size="lg" className="flex-1" disabled={isPending}>
-                {isPending ? e.goingToPayment : e.toPayment}
+                {paymentsEnabled
+                  ? isPending
+                    ? e.goingToPayment
+                    : e.toPayment
+                  : isPending
+                    ? e.confirmingNoPayment
+                    : e.confirmNoPayment}
               </Button>
             </div>
           </div>
