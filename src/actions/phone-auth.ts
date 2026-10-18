@@ -115,7 +115,7 @@ export async function resetPasswordAction(
 
   await prisma.user.update({
     where: { id: account.id },
-    data: { passwordHash: await bcrypt.hash(parsed.data.password, 12) },
+    data: { passwordHash: await bcrypt.hash(parsed.data.password, 12), passwordChangedAt: new Date() },
   });
   return { success: true };
 }
