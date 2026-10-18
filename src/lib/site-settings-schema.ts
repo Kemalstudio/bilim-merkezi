@@ -7,7 +7,7 @@ import { locales, type Locale } from "@/lib/i18n/config";
  * while nothing is saved. No database access here, so client components can import it.
  */
 
-export type SettingKey = "sections" | "animations" | "contacts" | "languages" | "heroReport" | "assistant";
+export type SettingKey = "sections" | "animations" | "contacts" | "languages" | "heroReport" | "assistant" | "payments";
 
 /** Text edits are stored per language, one row each. */
 export const textsKey = (locale: Locale) => `texts.${locale}` as const;
@@ -139,6 +139,20 @@ export const assistantSchema = z.object({
 export type AssistantSettings = z.infer<typeof assistantSchema>;
 
 export const DEFAULT_ASSISTANT: AssistantSettings = { enabled: true };
+
+/* ── Payments ──────────────────────────────────────────────────────────────────────── */
+
+export const paymentsSchema = z.object({
+  /**
+   * Off while the centre is testing: enrolling confirms the seat at once, with no card and no
+   * charge (the payment is recorded as 0 TMT so revenue figures stay true).
+   */
+  enabled: z.boolean(),
+});
+
+export type PaymentSettings = z.infer<typeof paymentsSchema>;
+
+export const DEFAULT_PAYMENTS: PaymentSettings = { enabled: true };
 
 /* ── Contacts ────────────────────────────────────────────────────────────────────────── */
 
