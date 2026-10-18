@@ -58,7 +58,6 @@ export function ScheduleEventTable({ events }: { events: ScheduleEventRow[] }) {
         <TableHeader>
           <TableRow>
             <TableHead>Занятие</TableHead>
-            <TableHead>Курс</TableHead>
             <TableHead>Дата и время</TableHead>
             <TableHead>Место</TableHead>
             <TableHead className="text-right">Действия</TableHead>
@@ -67,8 +66,10 @@ export function ScheduleEventTable({ events }: { events: ScheduleEventRow[] }) {
         <TableBody>
           {rows.map((row) => (
             <TableRow key={row.id} className={row.isPast ? "opacity-50" : undefined}>
-              <TableCell className="font-semibold text-ink">{row.title}</TableCell>
-              <TableCell className="text-ink-soft">{row.courseTitle}</TableCell>
+              <TableCell>
+                <p className="font-semibold text-ink">{row.title}</p>
+                <p className="mt-0.5 text-xs text-muted">{row.courseTitle}</p>
+              </TableCell>
               <TableCell>
                 <Badge variant={row.isPast ? "neutral" : "brand"}>{formatDateTime(row.startsAt)}</Badge>
               </TableCell>
