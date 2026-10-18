@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The brand mark's gradient (public/brand/bilim-mark.svg). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:type="linear" android:angle="315" android:startColor="#1FB5AD" android:centerColor="#0C6D8F" android:endColor="#073047"/>
+</shape>
