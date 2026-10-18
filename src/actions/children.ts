@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
+import { createChild, deleteChild, updateChild } from "@/lib/children-service";
 import { requireUser } from "@/lib/rbac";
 import { childSchema } from "@/lib/validations/child";
 import { getI18n } from "@/lib/i18n/server";
@@ -19,14 +19,6 @@ function parseChildForm(formData: FormData) {
   });
 }
 
-/**
- * Ownership check used by every child-scoped read and write. Looking a child up
- * by id *and* parentId means a forged id from another parent simply misses.
- */
-async function findOwnedChild(childId: string, parentId: string) {
-  return prisma.child.findFirst({ where: { id: childId, parentId } });
-}
-
 export async function createChildAction(
   _prev: ChildActionState,
   formData: FormData
@@ -38,42 +30,12 @@ export async function createChildAction(
     return { error: issueText(t, parsed.error.issues) };
   }
 
-  const siblings = await prisma.child.count({ where: { parentId: user.id } });
-  if (siblings >= 10) {
-    return { error: t.errors.childLimit };
-  }
-
-  const child = await prisma.child.create({
-    data: {
-      ...parsed.data,
-      parentId: user.id,
-      // Spreads sibling avatars around the colour wheel so cards stay distinct.
-      avatarHue: (siblings * 67) % 360,
-    },
-  });
-
-  // A newly added child immediately has exam results if the centre already
-  // recorded any against the parent's phone.
-  if (user.id) {
-    const parent = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { phone: true },
-    });
-    if (parent?.phone) {
-      await prisma.examResult.updateMany({
-        where: {
-          phone: parent.phone,
-          childId: null,
-          studentName: { contains: parsed.data.firstName, mode: "insensitive" },
-        },
-        data: { childId: child.id },
-      });
-    }
-  }
+  const created = await createChild(user.id, parsed.data);
+  if ("error" in created) return { error: t.errors[created.error] };
 
   revalidatePath("/account");
   revalidatePath("/account/children");
-  return { success: true, childId: child.id };
+  return { success: true, childId: created.id };
 }
 
 export async function updateChildAction(
@@ -83,15 +45,13 @@ export async function updateChildAction(
 ): Promise<ChildActionState> {
   const user = await requireUser();
   const { t } = await getI18n();
-  const existing = await findOwnedChild(childId, user.id);
-  if (!existing) return { error: t.errors.childNotFound };
-
   const parsed = parseChildForm(formData);
   if (!parsed.success) {
     return { error: issueText(t, parsed.error.issues) };
   }
 
-  await prisma.child.update({ where: { id: existing.id }, data: parsed.data });
+  const updated = await updateChild(user.id, childId, parsed.data);
+  if ("error" in updated) return { error: t.errors[updated.error] };
 
   revalidatePath("/account");
   revalidatePath("/account/children");
@@ -102,17 +62,8 @@ export async function updateChildAction(
 export async function deleteChildAction(childId: string): Promise<ChildActionState> {
   const user = await requireUser();
   const { t } = await getI18n();
-  const existing = await findOwnedChild(childId, user.id);
-  if (!existing) return { error: t.errors.childNotFound };
-
-  const activeEnrollments = await prisma.enrollment.count({
-    where: { childId: existing.id, status: "ACTIVE" },
-  });
-  if (activeEnrollments > 0) {
-    return { error: t.errors.childHasActive };
-  }
-
-  await prisma.child.delete({ where: { id: existing.id } });
+  const deleted = await deleteChild(user.id, childId);
+  if ("error" in deleted) return { error: t.errors[deleted.error] };
 
   revalidatePath("/account");
   revalidatePath("/account/children");
