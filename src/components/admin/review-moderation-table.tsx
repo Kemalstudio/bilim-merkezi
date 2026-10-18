@@ -53,12 +53,9 @@ export function ReviewModerationTable({ reviews }: { reviews: ReviewRow[] }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Курс</TableHead>
-          <TableHead>Автор</TableHead>
-          <TableHead>Оценка</TableHead>
+          <TableHead>Отзыв</TableHead>
           <TableHead>Комментарий</TableHead>
           <TableHead>Статус</TableHead>
-          <TableHead>Дата</TableHead>
           <TableHead className="text-right">Действия</TableHead>
         </TableRow>
       </TableHeader>
@@ -68,20 +65,22 @@ export function ReviewModerationTable({ reviews }: { reviews: ReviewRow[] }) {
           const busy = isPending && pendingId === row.id;
           return (
             <TableRow key={row.id}>
-              <TableCell className="font-semibold text-ink">{row.courseTitle}</TableCell>
-              <TableCell className="text-ink-soft">{row.authorName}</TableCell>
               <TableCell>
-                <span className="inline-flex items-center gap-1 text-amber">
-                  <Star className="h-3.5 w-3.5 fill-current" /> {row.rating}
-                </span>
+                <p className="font-semibold text-ink">{row.courseTitle}</p>
+                <p className="mt-0.5 flex items-center gap-2 text-xs text-muted">
+                  {row.authorName}
+                  <span className="inline-flex items-center gap-0.5 text-amber">
+                    <Star className="h-3 w-3 fill-current" /> {row.rating}
+                  </span>
+                  · {formatDate(row.createdAt)}
+                </p>
               </TableCell>
-              <TableCell className="max-w-xs truncate text-ink-soft" title={row.comment ?? undefined}>
+              <TableCell className="max-w-[16rem] truncate text-ink-soft" title={row.comment ?? undefined}>
                 {row.comment || "—"}
               </TableCell>
               <TableCell>
                 <Badge variant={badge.variant}>{badge.label}</Badge>
               </TableCell>
-              <TableCell className="text-ink-soft">{formatDate(row.createdAt)}</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1.5">
                   {row.status !== "APPROVED" && (
