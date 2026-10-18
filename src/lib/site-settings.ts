@@ -11,11 +11,13 @@ import {
   DEFAULT_CONTACTS,
   DEFAULT_HERO_REPORT,
   DEFAULT_LANGUAGES,
+  DEFAULT_PAYMENTS,
   animationsSchema,
   contactsSchema,
   heroReportSchema,
   isPlainObject,
   languagesSchema,
+  paymentsSchema,
   normalizeSections,
   sectionsSchema,
   textsKey,
@@ -53,6 +55,9 @@ export const getAnimations = cache(async () => ({
 }));
 
 export const getAssistantSettings = cache(() => readSetting("assistant", assistantSchema, DEFAULT_ASSISTANT));
+
+/** Whether enrolling takes a card payment; off for testing (seats are confirmed for free). */
+export const getPaymentSettings = cache(() => readSetting("payments", paymentsSchema, DEFAULT_PAYMENTS));
 
 export const getContacts = cache(() => readSetting("contacts", contactsSchema, DEFAULT_CONTACTS));
 
