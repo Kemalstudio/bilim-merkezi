@@ -16,6 +16,7 @@ import {
   heroReportSchema,
   languagesSchema,
   normalizeSections,
+  paymentsSchema,
   sectionsSchema,
   textsKey,
   type SectionSetting,
@@ -31,6 +32,7 @@ const SCHEMAS: Record<SettingKey, z.ZodType> = {
   languages: languagesSchema,
   heroReport: heroReportSchema,
   assistant: assistantSchema,
+  payments: paymentsSchema,
 };
 
 const isSettingKey = (key: unknown): key is SettingKey => typeof key === "string" && Object.hasOwn(SCHEMAS, key);
