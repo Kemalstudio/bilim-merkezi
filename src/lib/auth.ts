@@ -136,6 +136,7 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       if (user) {
         token.role = user.role;
         token.roleCheckedAt = now;
+        token.authAt = now;
         // Feeds "recent sign-ins" in the account settings; never allowed to break a login.
         if (user.id) void recordSignIn(user.id, account?.provider ?? "credentials").catch(() => {});
         return token;
@@ -152,9 +153,14 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
       const checkedAt = typeof token.roleCheckedAt === "number" ? token.roleCheckedAt : 0;
       if (now - checkedAt > ROLE_RECHECK_MS) {
         if (!token.sub) return null;
-        const current = await prisma.user.findUnique({ where: { id: token.sub }, select: { role: true, email: true } });
+        const current = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true, email: true, passwordChangedAt: true },
+        });
         // A deleted account keeps its row for the books, but no session survives it — on any device.
         if (!current || isDeletedEmail(current.email)) return null;
+        // Neither does one that signed in before the password was reset.
+        if (current.passwordChangedAt && current.passwordChangedAt.getTime() > (typeof token.authAt === "number" ? token.authAt : 0)) return null;
         token.role = current.role;
         token.roleCheckedAt = now;
       }
