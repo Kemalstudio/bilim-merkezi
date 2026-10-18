@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Deep brand blue with the mark, until Flutter draws its own splash. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/splash_background"/>
+    <item>
+        <bitmap android:gravity="center" android:src="@drawable/launch_image"/>
+    </item>
+</layer-list>
