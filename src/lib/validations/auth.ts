@@ -28,7 +28,9 @@ export const emailField = z
   .string({ error: "emailInvalid" })
   .trim()
   .toLowerCase()
-  .pipe(z.email("emailInvalid"));
+  .pipe(z.email("emailInvalid"))
+  // The site's own stand-in addresses (phone-only and deleted accounts) are never anyone's real email.
+  .refine((value) => !value.endsWith(".bilim.local"), "emailInvalid");
 
 // bcrypt ignores everything past 72 bytes, so longer passwords would be silently truncated.
 export const newPasswordField = z
@@ -73,18 +75,35 @@ export const credentialsSchema = z.object({
  * Registration needs a phone number, confirmed by SMS before the account exists. Email is
  * optional: many parents have none, and a blank field means "no email", not an error.
  */
+const nameField = z.string({ error: "nameShort" }).trim().min(2, "nameShort").max(80, "nameLong");
+
+const passwordsMatch = {
+  check: (data: { password: string; confirmPassword: string }) => data.password === data.confirmPassword,
+  issue: { message: "passwordMismatch", path: ["confirmPassword"] },
+};
+
 export const registerSchema = z
   .object({
-    name: z.string({ error: "nameShort" }).trim().min(2, "nameShort").max(80, "nameLong"),
+    name: nameField,
     phone: phoneField,
     email: z.preprocess((value) => (typeof value === "string" && value.trim() === "" ? undefined : value), emailField.optional()),
     password: newPasswordField,
     confirmPassword: z.string({ error: "passwordMismatch" }),
   })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "passwordMismatch",
-    path: ["confirmPassword"],
-  });
+  .refine(passwordsMatch.check, passwordsMatch.issue);
+
+/**
+ * Registration without an SMS: email and password, nothing to confirm. No phone is asked
+ * for — an unconfirmed number could belong to someone else; it can be added (by SMS) later.
+ */
+export const registerWithEmailSchema = z
+  .object({
+    name: nameField,
+    email: emailField,
+    password: newPasswordField,
+    confirmPassword: z.string({ error: "passwordMismatch" }),
+  })
+  .refine(passwordsMatch.check, passwordsMatch.issue);
 
 /** The second registration step: the same details plus the code from the SMS. */
 export const confirmRegistrationSchema = registerSchema.and(z.object({ code: otpCodeField }));
