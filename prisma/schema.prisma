@@ -43,16 +43,19 @@ enum ReviewStatus {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  passwordHash  String?
-  phone         String?   @unique
-  role          Role      @default(STUDENT)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  name              String?
+  email             String    @unique
+  emailVerified     DateTime?
+  image             String?
+  passwordHash      String?
+  phone             String?   @unique
+  role              Role      @default(STUDENT)
+  // Set when the password is reset (email link, SMS recovery, admin): sessions that signed in
+  // before it are ended, so whoever knew the old password is locked out everywhere.
+  passwordChangedAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   accounts         Account[]
   sessions         Session[]
@@ -62,6 +65,8 @@ model User {
   auditLogs        AuditLog[]
   promoRedemptions PromoRedemption[]
   children         Child[]
+  passwordResets   PasswordResetToken[]
+  mobileSessions   MobileSession[]
 
   @@map("users")
 }
@@ -173,7 +178,7 @@ model Course {
 }
 
 model CourseModule {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   title    String
   position Int
   // A module is one week of the programme; the goal is what the student can do by its end.
@@ -187,7 +192,7 @@ model CourseModule {
 }
 
 model Lesson {
-  id          String @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   durationMin Int
   position    Int
@@ -398,11 +403,11 @@ model PhoneOtp {
   phone        String
   codeHash     String?
   gatewayOtpId String?
-  purpose    OtpPurpose @default(LOGIN)
-  expiresAt  DateTime
-  attempts   Int        @default(0)
-  consumedAt DateTime?
-  createdAt  DateTime   @default(now())
+  purpose      OtpPurpose @default(LOGIN)
+  expiresAt    DateTime
+  attempts     Int        @default(0)
+  consumedAt   DateTime?
+  createdAt    DateTime   @default(now())
 
   @@index([phone, purpose])
   @@map("phone_otps")
@@ -471,4 +476,42 @@ model StoredFile {
   createdAt   DateTime @default(now())
 
   @@map("stored_files")
+}
+
+/// A one-time link that lets someone set a new password without the old one: sent by email
+/// ("forgot password") or made by an admin for a parent who cannot receive it. Only a SHA-256
+/// hash of the token is stored, so a database read cannot be turned into a working link.
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+  /// The admin who made the link; null when the parent asked for it by email.
+  createdById String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// A signed-in copy of the mobile app. The app sends the token as "Authorization: Bearer";
+/// only its SHA-256 hash is stored. Signing out, deleting the account or resetting the password
+/// (see User.passwordChangedAt) ends it.
+model MobileSession {
+  id         String    @id @default(cuid())
+  tokenHash  String    @unique
+  device     String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("mobile_sessions")
 }
