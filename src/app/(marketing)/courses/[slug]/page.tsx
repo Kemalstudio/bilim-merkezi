@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Award, BookOpen, CalendarDays, CalendarRange, Clock, LineChart, NotebookPen, Repeat, Signal, Star, UserRound, Users as UsersIcon } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getPaymentSettings } from "@/lib/site-settings";
 import { initials } from "@/lib/utils";
 import { weekLoad } from "@/lib/course-schedule";
 import { siteUrl } from "@/lib/site-url";
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [session, { t, f, locale }] = await Promise.all([auth(), getI18n()]);
+  const [session, { t, f, locale }, payments] = await Promise.all([auth(), getI18n(), getPaymentSettings()]);
 
   const course = await prisma.course.findUnique({
     where: { slug },
@@ -353,9 +354,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
                     )}
                     <EnrollmentDialog
                       courseId={course.id}
-                      label={hasPending ? t.course.continuePayment : isActive ? t.course.enrollAnother : t.course.enroll}
+                      label={hasPending && payments.enabled ? t.course.continuePayment : isActive ? t.course.enrollAnother : t.course.enroll}
                       variant={isActive && !hasPending ? "outline" : "primary"}
                       profiles={enrollableChildren}
+                      paymentsEnabled={payments.enabled}
                     />
                   </div>
                 )}
