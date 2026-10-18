@@ -10,6 +10,7 @@ import {
   BookOpen,
   CalendarClock,
   ClipboardCheck,
+  CreditCard,
   Languages,
   LayoutDashboard,
   LayoutList,
@@ -24,6 +25,7 @@ import {
   TrendingUp,
   Type,
   Users,
+  Award,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +56,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
       { href: "/bilim/admin/library", label: "Библиотека", icon: Library },
       { href: "/bilim/admin/enrollments", label: "Записи", icon: ClipboardCheck },
       { href: "/bilim/admin/schedule", label: "Расписание", icon: CalendarClock },
+      { href: "/bilim/admin/results", label: "Баллы учеников", icon: Award },
       { href: "/bilim/admin/reviews", label: "Отзывы", icon: MessageSquareText },
     ],
   },
@@ -62,6 +65,7 @@ const NAV: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/bilim/admin/users", label: "Пользователи", icon: Users, adminOnly: true },
       { href: "/bilim/admin/promo-codes", label: "Промокоды", icon: Tag },
+      { href: "/bilim/admin/payments", label: "Оплата", icon: CreditCard, adminOnly: true },
     ],
   },
   { title: "Система", items: [{ href: "/bilim/admin/audit-log", label: "Журнал действий", icon: ScrollText }] },
