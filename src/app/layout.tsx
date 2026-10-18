@@ -22,7 +22,7 @@ const inter = Inter({
 });
 
 // The "js" class also gates the first-load curtain, so it never sticks without scripts, and
-// "intro-seen" hides it before first paint once it has played this session (key shared with
+// "intro-seen" hides it before first paint once it has eplayed this session (key shared with
 // IntroOverlay).
 const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement;d.classList.add("js");try{if(localStorage.getItem("theme")==="dark"){d.classList.add("dark");}}catch(e){}try{if(sessionStorage.getItem("bilim:intro-seen")==="1"){d.classList.add("intro-seen");}}catch(e){}})();`;
 
