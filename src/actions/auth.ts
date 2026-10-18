@@ -4,7 +4,12 @@ import bcrypt from "bcryptjs";
 import { AuthError } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { signIn, signOut } from "@/lib/auth";
-import { confirmRegistrationSchema, credentialsSchema, registerSchema } from "@/lib/validations/auth";
+import {
+  confirmRegistrationSchema,
+  credentialsSchema,
+  registerSchema,
+  registerWithEmailSchema,
+} from "@/lib/validations/auth";
 import { issueOtp, verifyOtp } from "@/lib/otp";
 import { isSmsSimulated } from "@/lib/sms";
 import { maskPhone, placeholderEmail } from "@/lib/phone";
@@ -93,6 +98,30 @@ export async function registerAction(_prev: ActionState, formData: FormData): Pr
   const redirectTo = safeCallbackUrl(formData.get("callbackUrl"), "/account");
   try {
     await signIn("credentials", { login: phone, password, redirectTo });
+  } catch (error) {
+    if (error instanceof AuthError) return { error: t.errors.autoLoginFailed };
+    throw error;
+  }
+}
+
+/** Registration without an SMS: email and password, the account is created and signed in at once. */
+export async function registerWithEmailAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { t } = await getI18n();
+  if (!(await rateLimit(`register:${await getClientIp()}`, 5, 60_000)).success) {
+    return { error: t.errors.tooManyAttempts };
+  }
+
+  const parsed = registerWithEmailSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: issueText(t, parsed.error.issues) };
+  const { name, email, password } = parsed.data;
+
+  if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) return { error: t.errors.emailTaken };
+
+  await prisma.user.create({ data: { name, email, passwordHash: await bcrypt.hash(password, 12) } });
+
+  const redirectTo = safeCallbackUrl(formData.get("callbackUrl"), "/account");
+  try {
+    await signIn("credentials", { login: email, password, redirectTo });
   } catch (error) {
     if (error instanceof AuthError) return { error: t.errors.autoLoginFailed };
     throw error;
