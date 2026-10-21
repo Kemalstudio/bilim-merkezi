@@ -5,6 +5,7 @@ import { defaultLocale, isLocale, type Locale } from "@/lib/i18n/config";
 import { getUiDictionary, issueText, type Ui } from "@/lib/i18n/ui";
 import { getLanguages } from "@/lib/site-settings";
 import { authenticateMobile, type MobileUser } from "@/lib/mobile/session";
+import { clientIpFrom } from "@/lib/rate-limit";
 
 /*
  * Plumbing shared by the mobile app's JSON API (/api/mobile/v1). Every error has the same
@@ -18,9 +19,7 @@ export async function apiContext(request: Request): Promise<ApiContext> {
   const languages = await getLanguages();
   const asked = request.headers.get("x-locale") ?? request.headers.get("accept-language")?.slice(0, 2);
   const locale = isLocale(asked) && languages.enabled.includes(asked) ? asked : (languages.defaultLocale ?? defaultLocale);
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || request.headers.get("x-real-ip")?.trim() || "unknown";
-  return { t: getUiDictionary(locale), locale, ip };
+  return { t: getUiDictionary(locale), locale, ip: clientIpFrom(request.headers) };
 }
 
 export function ok<T>(data: T, status = 200) {
