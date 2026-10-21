@@ -14,6 +14,7 @@ import { headers } from "next/headers";
 import { logAction } from "@/lib/audit";
 import { isDeletedEmail } from "@/lib/account";
 import { describeDevice } from "@/lib/device";
+import { clientIpFrom, rateLimit } from "@/lib/rate-limit";
 
 const ROLE_RECHECK_MS = 5 * 60_000;
 
@@ -52,9 +53,11 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         phone: { label: "Телефон", type: "tel" },
         code: { label: "Код из SMS", type: "text" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const parsed = verifyOtpSchema.safeParse(credentials);
         if (!parsed.success) return null;
+        // /api/auth/callback/phone-otp can be posted to directly, past the action's own limit.
+        if (!(await rateLimit(`phone-otp-auth:${clientIpFrom(request.headers)}`, 20, 60_000)).success) return null;
 
         const { phone, code, name } = parsed.data;
         const result = await verifyOtp(phone, "LOGIN", code);
@@ -87,9 +90,19 @@ export const { handlers, auth, signIn, signOut, unstable_update: updateSession }
         login: { label: "Email или телефон", type: "text" },
         password: { label: "Пароль", type: "password" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const parsed = credentialsSchema.safeParse(credentials);
         if (!parsed.success) return null;
+
+        // The sign-in actions rate-limit too, but /api/auth/callback/credentials can be posted
+        // to directly, so password guessing is capped here as well — per address and per account.
+        // The limits are looser than the actions' so a normal form sign-in never hits them first.
+        const account = "email" in parsed.data.login ? parsed.data.login.email : parsed.data.login.phone;
+        const [byIp, byAccount] = await Promise.all([
+          rateLimit(`credentials-auth:${clientIpFrom(request.headers)}`, 20, 60_000),
+          rateLimit(`credentials-auth-account:${account}`, 20, 15 * 60_000),
+        ]);
+        if (!byIp.success || !byAccount.success) return null;
 
         const user = await prisma.user.findUnique({ where: parsed.data.login });
         if (!user?.passwordHash) return null;
