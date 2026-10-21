@@ -105,7 +105,11 @@ export async function rateLimit(key: string, limit: number, windowMs: number): P
  * Behind a reverse proxy, make sure the proxy overwrites (not appends to) this header.
  */
 export async function getClientIp() {
-  const store = await headers();
+  return clientIpFrom(await headers());
+}
+
+/** Same as getClientIp, for code that has the request's headers in hand (route handlers, Auth.js). */
+export function clientIpFrom(store: Pick<Headers, "get">) {
   const forwarded = store.get("x-forwarded-for")?.split(",")[0]?.trim();
   return forwarded || store.get("x-real-ip")?.trim() || "unknown";
 }
