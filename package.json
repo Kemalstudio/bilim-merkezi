@@ -37,9 +37,9 @@
     "clsx": "^2.1.1",
     "gsap": "^3.15.0",
     "lucide-react": "^1.41.0",
-    "next": "16.3.3",
+    "next": "16.3.8",
     "next-auth": "^5.0.0-beta.32",
-    "nodemailer": "^8.0.11",
+    "nodemailer": "^10.1.7",
     "pg": "^8.23.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -47,7 +47,7 @@
     "react-hook-form": "^7.87.0",
     "recharts": "^3.10.1",
     "server-only": "^0.0.1",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "sonner": "^2.0.8",
     "stripe": "^22.6.1",
     "tailwind-merge": "^3.6.0",
@@ -67,7 +67,7 @@
     "@types/three": "^0.182.0",
     "dotenv": "^17.4.2",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.3.8",
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
@@ -75,5 +75,8 @@
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
+  },
+  "overrides": {
+    "nodemailer": "$nodemailer"
   }
 }
