@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: bilim_dev_password
       POSTGRES_DB: bilim_merkezi
     ports:
-      - "5434:5432"
+      # Only this computer can reach the database: the dev password must not be open to the LAN.
+      - "127.0.0.1:5434:5432"
     volumes:
       - bilim_pgdata:/var/lib/postgresql/data
     healthcheck:
